@@ -1,10 +1,9 @@
 {
-  "name": "ts-refactor",
+  "name": "inquirer-code-prompts",
   "version": "0.0.1",
-  "description": "TypeScript code refactor interactive CLI tool",
+  "description": "Code / Parsing / AST TypeScript / JavasScript related inquirer plugins prompts",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
-  "bin": "bin/ts-refactor.js",
   "scripts": {
     "watch": "tsc --watch",
     "build": "tsc",
