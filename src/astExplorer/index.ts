@@ -1,4 +1,4 @@
-import { prompt } from 'inquirer';
+import { prompt } from 'inquirer'
 import * as ts from 'typescript'
 // import { getChildren } from 'typescript-ast-util';
 
@@ -31,10 +31,10 @@ console.log({selectedNode: selectedNode.getText()});
  * TODO: pass directly all the options to the prompt - remove this function
  */
 export async function astExplorer(options: Options): Promise<ResultValue> {
-  const rows = process.stdout.rows || 24;
-  const choices = options.code.split('\n');
+  const rows = process.stdout.rows || 24
+  const choices = options.code.split('\n')
   const result = await prompt<{
-    ' ': ResultValue;
+    ' ': ResultValue
   }>([
     {
       type: 'ast-explorer',
@@ -43,17 +43,16 @@ export async function astExplorer(options: Options): Promise<ResultValue> {
       paginated: true,
       pageSize: options.pageSize || Math.min(options.pageSize || Infinity, rows)
     }
-  ]);
-  return result[' '];
+  ])
+  return result[' ']
 }
 interface Options {
-  code: string;
-  pageSize?: number;
+  code: string
+  pageSize?: number
 }
 export interface ResultValue {
-  selectedNodes: ts.Node[];
+  selectedNodes: ts.Node[]
 }
-
 
 // /**
 //  * @param getChildrenMode if true it will use `node.getChildren()` o obtain children instead of default behavior that is using `node.forEachChild`
@@ -61,4 +60,3 @@ export interface ResultValue {
 // export function getSiblings(node: ts.Node, getChildrenMode: boolean = false): ts.Node[] {
 //   return getChildren(node.parent, getChildrenMode).filter(c=>c!==node)
 //  }
- 

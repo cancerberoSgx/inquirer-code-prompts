@@ -47,7 +47,7 @@ interface Options {
  * copied from RawList and simplified so it simulates the less unix command to scroll long texts.
  */
 export class Less extends Base {
-  constructor(questions: Questions, rl:any, answers:any) {
+  constructor(questions: Questions, rl: any, answers: any) {
     super(questions, rl, answers)
     if (!this.opt.choices) {
       this.throwParamError('choices')

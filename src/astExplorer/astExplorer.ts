@@ -7,11 +7,11 @@ import { nodeKinds } from './nodeKinds'
 import { map, takeUntil } from 'rxjs/operators'
 const Base = require('inquirer/lib/prompts/base') as typeof CustomBase
 const observe = require('inquirer/lib/utils/events')
-import { createWrappedNode, OutputFile } from 'ts-morph';
-import {getChildren, getAscendants} from 'typescript-ast-util'
+import { createWrappedNode, OutputFile } from 'ts-morph'
+import { getChildren, getAscendants } from 'typescript-ast-util'
 import * as ts from 'typescript'
-import { CustomBase, InquirerBase, KeyEvent } from './types';
-import { ResultValue } from './index';
+import { CustomBase, InquirerBase, KeyEvent } from './types'
+import { ResultValue } from './index'
 
 export class AstExplorer<T extends ResultValue> extends Base implements InquirerBase<T> {
   currentInput: string
@@ -26,7 +26,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
   lastSelectedNode: ts.Node
   code: string
   paginator: CustomPaginator
-  selected:number=0 //deprecate
+  selected: number = 0 //deprecate
   constructor(questions: Questions, rl: any, answers: any) {
     super(questions, rl, answers)
     if (!this.opt.choices) {
@@ -67,7 +67,8 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
         this.currentInput = this.kindNameSuggestions[this.kindNameSuggestionIndex]
         this.rl.line = this.currentInput
       }
-    } else if (e && e.value) { // is a letter
+    } else if (e && e.value) {
+      // is a letter
       this.kindNameSuggestionIndex = -1
       this.currentInput = this.rl.line
     }
@@ -83,33 +84,35 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
         .pop() || this.currentInput.toLowerCase()
     // let output = ''
     // try {
-      const {output, error } = this.renderCode()
+    const { output, error } = this.renderCode()
     // } catch c(er) {
-      // error = er + ''
+    // error = er + ''
     // }
     this.kindNameSuggestions =
-      this.kindNameSuggestionIndex === -1 ? nodeKinds.filter(k => k.toLowerCase().includes(lowerInput)) : this.kindNameSuggestions
+      this.kindNameSuggestionIndex === -1
+        ? nodeKinds.filter(k => k.toLowerCase().includes(lowerInput))
+        : this.kindNameSuggestions
     message += this.paginator.paginate(output, this.selected || 0, this.opt.pageSize)
     message += `Selector: ${this.currentInput}`
     let bottomContent = `SyntaxKinds Autocomplete (TAB): [${
       this.kindNameSuggestionIndex !== -1
         ? this.kindNameSuggestions
         : this.kindNameSuggestions
-          .map(k => {
-            const index = k.toLowerCase().indexOf(lowerInput)
-            const a = `${chalk.redBright(index === -1 ? '' : k.substring(0, lowerInput.length))}${k.substring(
-              index === -1 ? 0 : lowerInput.length,
-              k.length
-            )}`
-            return a
-          })
-          .map((s, i, a) => (i > 5 ? undefined : s))
-          .filter(a => a)
-          .join(', ')
-      }]
+            .map(k => {
+              const index = k.toLowerCase().indexOf(lowerInput)
+              const a = `${chalk.redBright(index === -1 ? '' : k.substring(0, lowerInput.length))}${k.substring(
+                index === -1 ? 0 : lowerInput.length,
+                k.length
+              )}`
+              return a
+            })
+            .map((s, i, a) => (i > 5 ? undefined : s))
+            .filter(a => a)
+            .join(', ')
+    }]
     `.trim()
-    if (error ||error2) {
-      bottomContent = '\n' + chalk.red('>> ') + (error||error2)
+    if (error || error2) {
+      bottomContent = '\n' + chalk.red('>> ') + (error || error2)
     }
     this.screen.render(message, bottomContent)
   }
@@ -125,17 +128,16 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     //   // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
     //   this.navigableNativeNodes = [
     //     // ...getAscendants(this.lastSelectedNode),
-    //      ...getChildren(this.lastSelectedNode), 
+    //      ...getChildren(this.lastSelectedNode),
     //      ...getChildren(this.lastSelectedNode.parent)]
     // }
     // else {
-      if(this.currentInput){
+    if (this.currentInput) {
       try {
-        
-      this.navigableNativeNodes = tsquery(this.sourceFileNative, this.currentInput)
-      // this.navigableNativeNodes = wrapNodes(this.navigableNativeNodes, this.sourceFileNative)
+        this.navigableNativeNodes = tsquery(this.sourceFileNative, this.currentInput)
+        // this.navigableNativeNodes = wrapNodes(this.navigableNativeNodes, this.sourceFileNative)
       } catch (er) {
-        error=er
+        error = er
       }
     }
     this.selectedNodeIndex < this.navigableNativeNodes.length - 1 ? this.selectedNodeIndex : 0
@@ -148,7 +150,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
       last = node.getEnd()
     })
     output += text.substring(last, text.length)
-    return {output, error}
+    return { output, error }
   }
   onEnd(state: { value: T }) {
     this.status = 'answered'
@@ -165,45 +167,46 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     if (!this.currentInput) {
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
       this.navigableNativeNodes = [
-        ...getAscendants(this.lastSelectedNode),
-      //   //  ...getChildren(this.lastSelectedNode), 
-      //   //  ...getChildren(this.lastSelectedNode.parent)
+        ...getAscendants(this.lastSelectedNode)
+        //   //  ...getChildren(this.lastSelectedNode),
+        //   //  ...getChildren(this.lastSelectedNode.parent)
       ]
     }
     // else {
-      this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length-1 : this.selectedNodeIndex - 1
-    // }  
+    this.selectedNodeIndex =
+      this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
+    // }
     this.onKeypress()
-
   }
   onDownKey() {
     if (!this.currentInput) {
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
       this.navigableNativeNodes = [
         // ...getAscendants(this.lastSelectedNode),
-         ...getChildren(this.lastSelectedNode), 
+        ...getChildren(this.lastSelectedNode)
         //  ...getChildren(this.lastSelectedNode.parent)
       ]
     }
     // else {
 
-      this.selectedNodeIndex = this.selectedNodeIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.selectedNodeIndex + 1
+    this.selectedNodeIndex =
+      this.selectedNodeIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.selectedNodeIndex + 1
     // }
     // this.onArrowKey('down')
     this.onKeypress()
-
   }
   onLeftKey() {
-   if (!this.currentInput) {
+    if (!this.currentInput) {
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
       this.navigableNativeNodes = [
         // ...getAscendants(this.lastSelectedNode),
-        //  ...getChildren(this.lastSelectedNode), 
-         ...getChildren(this.lastSelectedNode.parent)
+        //  ...getChildren(this.lastSelectedNode),
+        ...getChildren(this.lastSelectedNode.parent)
       ]
     }
     // this.onArrowKey('down')
-    this.selectedNodeIndex = this.selectedNodeIndex < 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
+    this.selectedNodeIndex =
+      this.selectedNodeIndex < 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
     this.onKeypress()
   }
   onRightKey() {
@@ -211,32 +214,32 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
       this.navigableNativeNodes = [
         // ...getAscendants(this.lastSelectedNode),
-        //  ...getChildren(this.lastSelectedNode), 
-         ...getChildren(this.lastSelectedNode.parent)
+        //  ...getChildren(this.lastSelectedNode),
+        ...getChildren(this.lastSelectedNode.parent)
       ]
     }
-    this.kindNameSuggestionIndex = this.kindNameSuggestionIndex >=this.navigableNativeNodes.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+    this.kindNameSuggestionIndex =
+      this.kindNameSuggestionIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
     //  === -1 ? 0 : this.kindNameSuggestionIndex >= this.kindNameSuggestions.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
     this.onKeypress()
-
   }
   // onArrowKey(type: string) {
-    // if (type === 'up') {
-    //   this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
-    // } else if (type === 'down') {
-    //   this.selectedNodeIndex =        this.selectedNodeIndex >= this.navigableNodes.length - 1          ? this.navigableNodes.length - 1          : this.selectedNodeIndex + 1
-    // }
-    // else if (type === 'left') {
-    //   this.kindNameSuggestionIndex === -1 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex <= 0 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex - 1
-    // }
+  // if (type === 'up') {
+  //   this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
+  // } else if (type === 'down') {
+  //   this.selectedNodeIndex =        this.selectedNodeIndex >= this.navigableNodes.length - 1          ? this.navigableNodes.length - 1          : this.selectedNodeIndex + 1
+  // }
+  // else if (type === 'left') {
+  //   this.kindNameSuggestionIndex === -1 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex <= 0 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex - 1
+  // }
 
-    // else if (type === 'right') {
-    //   this.kindNameSuggestionIndex = this.kindNameSuggestionIndex === -1 ? 0 : this.kindNameSuggestionIndex >= this.suggestions.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
-    // }
-    // this.onKeypress()
+  // else if (type === 'right') {
+  //   this.kindNameSuggestionIndex = this.kindNameSuggestionIndex === -1 ? 0 : this.kindNameSuggestionIndex >= this.suggestions.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+  // }
+  // this.onKeypress()
   // }
   private log(...args: any[]) {
-    appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '));
+    appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '))
   }
   protected _run(cb: any) {
     this.done = cb
@@ -251,7 +254,6 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     this.render()
     return this
   }
-
 }
 /**
  * Adapted from inquirer sources. The paginator keeps track of a pointer index in a list and returns* a subset of the choices if the list is too long.
@@ -294,11 +296,8 @@ class CustomPaginator {
   }
 }
 
-
 // utitilty functions
 
 function wrapNodes(nodes: ts.Node[], sourceFile: ts.SourceFile) {
-  return nodes.map(n =>
-    createWrappedNode(n, { sourceFile })
-  )
+  return nodes.map(n => createWrappedNode(n, { sourceFile }))
 }
