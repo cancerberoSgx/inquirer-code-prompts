@@ -1,10 +1,10 @@
-import { AstExplorer } from '../../src/astExplorer/astExplorer'
-import { astExplorer } from "../../src/astExplorer/index";
+import { AstExplorer, astExplorer } from '../../src/astExplorer'
 import { registerPrompt } from 'inquirer'
 
-registerPrompt('ast-explorer', AstExplorer as any)
+
 
 async function test() {
+  registerPrompt('ast-explorer', AstExplorer as any)
   const code = `
 class Animal {
   constructor(public name: string) { }

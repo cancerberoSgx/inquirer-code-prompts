@@ -1,6 +1,6 @@
 import { Questions } from 'inquirer'
-import { ResultValue } from './index'
-let types
+import * as ts from 'typescript'
+
 export interface KeyEvent {
   value: string
   key: {
@@ -34,4 +34,11 @@ export declare class CustomBase {
   // this.log(state, state.value)
   //  this.done(state.value)
   done(value: any): void
+}
+export interface Options {
+  code: string;
+  pageSize?: number;
+}
+export interface ResultValue {
+  selectedNodes: ts.Node[];
 }

@@ -1,17 +1,17 @@
-import { tsquery } from '@phenomnomnominal/tsquery'
-import chalk from 'chalk'
-import { Questions } from 'inquirer'
-import * as _ from 'lodash'
-import { appendFileSync } from 'fs'
-import { nodeKinds } from './nodeKinds'
-import { map, takeUntil } from 'rxjs/operators'
+import { tsquery } from '@phenomnomnominal/tsquery';
+import chalk from 'chalk';
+import { appendFileSync } from 'fs';
+import { Questions } from 'inquirer';
+import * as _ from 'lodash';
+import { map, takeUntil } from 'rxjs/operators';
+import { createWrappedNode } from 'ts-morph';
+import * as ts from 'typescript';
+import { getChildren } from 'typescript-ast-util';
+import { nodeKinds } from './nodeKinds';
+import { CustomBase, InquirerBase, KeyEvent, ResultValue } from './types';
+import { Keys } from 'cli-driver/lib/src/ansi';
 const Base = require('inquirer/lib/prompts/base') as typeof CustomBase
 const observe = require('inquirer/lib/utils/events')
-import { createWrappedNode, OutputFile } from 'ts-morph'
-import { getChildren, getAscendants } from 'typescript-ast-util'
-import * as ts from 'typescript'
-import { CustomBase, InquirerBase, KeyEvent } from './types'
-import { ResultValue } from './index'
 
 export class AstExplorer<T extends ResultValue> extends Base implements InquirerBase<T> {
   currentInput: string
@@ -55,26 +55,8 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
       }
     }
   }
-  onKeypress(e?: KeyEvent) {
-    let error: string | undefined
-    if (e && e.key.name === 'tab') {
-      //On TAB we advance to next syntax kind suggestion if any. this.currentInput is reset to that value. or show error if no suggestion left
-      this.kindNameSuggestionIndex++
-      this.kindNameSuggestionIndex >= this.kindNameSuggestions.length ? 0 : this.kindNameSuggestionIndex
-      if (!this.kindNameSuggestions[this.kindNameSuggestionIndex]) {
-        error = 'No available suggestions'
-      } else {
-        this.currentInput = this.kindNameSuggestions[this.kindNameSuggestionIndex]
-        this.rl.line = this.currentInput
-      }
-    } else if (e && e.value) {
-      // is a letter
-      this.kindNameSuggestionIndex = -1
-      this.currentInput = this.rl.line
-    }
-    // this.log(this.currentInput, e);
-    this.render(error)
-  }
+
+  // RENDER
   render(error2?: string) {
     let message = ''
     const lowerInput =
@@ -116,10 +98,6 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     }
     this.screen.render(message, bottomContent)
   }
-  getCurrentValue(): T {
-    this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex] || this.lastSelectedNode
-    return { selectedNodes: [this.lastSelectedNode] } as any // TODO: check
-  }
   /** it parses code and could throw! Called by render().  TODO performance perhaps input dont change and nothing change to re-compile   */
   protected renderCode() {
     let text = this.sourceFileNative.getFullText()
@@ -152,24 +130,49 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     output += text.substring(last, text.length)
     return { output, error }
   }
-  onEnd(state: { value: T }) {
-    this.status = 'answered'
-    this.answer = state.value
-    this.render()
-    this.screen.done()
-    // this.log(state, state.value)
-    this.done(state.value)
+
+
+
+  // EVENTS
+
+  onKeypress(e?: KeyEvent) {
+    let error: string | undefined
+    if(Keys.name==='left'){
+      this.onLeftKey()
+    }
+    else if(Keys.name==='right'){
+      this.onRightKey()
+    }
+    // this.log('onKeypress')
+    else if (e && e.key.name === 'tab') {
+      //On TAB we advance to next syntax kind suggestion if any. this.currentInput is reset to that value. or show error if no suggestion left
+      this.kindNameSuggestionIndex++
+      this.kindNameSuggestionIndex >= this.kindNameSuggestions.length ? 0 : this.kindNameSuggestionIndex
+      if (!this.kindNameSuggestions[this.kindNameSuggestionIndex]) {
+        error = 'No available suggestions'
+      } else {
+        this.currentInput = this.kindNameSuggestions[this.kindNameSuggestionIndex]
+        this.rl.line = this.currentInput
+      }
+    } else if (e && e.value) {
+      // is a letter
+      this.kindNameSuggestionIndex = -1
+      this.currentInput = this.rl.line
+    }
+    // this.log(this.currentInput, e);
+    this.render(error)
   }
-  onError() {
-    this.render('Please enter valid code or selector.')
-  }
+
   onUpKey() {
     if (!this.currentInput) {
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
       this.navigableNativeNodes = [
-        ...getAscendants(this.lastSelectedNode)
+        
+        // this.lastSelectedNode, 
+
+        // ...getAscendants(this.lastSelectedNode)
         //   //  ...getChildren(this.lastSelectedNode),
-        //   //  ...getChildren(this.lastSelectedNode.parent)
+           ...getChildren(this.lastSelectedNode.parent)
       ]
     }
     // else {
@@ -183,9 +186,11 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
       this.navigableNativeNodes = [
         // ...getAscendants(this.lastSelectedNode),
+        // ...
         ...getChildren(this.lastSelectedNode)
-        //  ...getChildren(this.lastSelectedNode.parent)
+        //  ...getChildren(this.lastSelectedNode.parent).map(s=>getChildren(s)).flat()
       ]
+      this.selectedNodeIndex = 0
     }
     // else {
 
@@ -196,13 +201,16 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     this.onKeypress()
   }
   onLeftKey() {
+    // this.log('onLeftKey')
+
     if (!this.currentInput) {
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
-      this.navigableNativeNodes = [
-        // ...getAscendants(this.lastSelectedNode),
-        //  ...getChildren(this.lastSelectedNode),
-        ...getChildren(this.lastSelectedNode.parent)
-      ]
+      // this.navigableNativeNodes = [
+      //   // ...getAscendants(this.lastSelectedNode),
+      //   //  ...getChildren(this.lastSelectedNode),
+      //   ...getChildren(this.lastSelectedNode.parent)
+      // ]
+      // this.selectedNodeIndex=0
     }
     // this.onArrowKey('down')
     this.selectedNodeIndex =
@@ -210,13 +218,15 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     this.onKeypress()
   }
   onRightKey() {
+    // this.log('right')
     if (!this.currentInput) {
       // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
-      this.navigableNativeNodes = [
-        // ...getAscendants(this.lastSelectedNode),
-        //  ...getChildren(this.lastSelectedNode),
-        ...getChildren(this.lastSelectedNode.parent)
-      ]
+      // this.navigableNativeNodes = [
+      //   // ...getAscendants(this.lastSelectedNode),
+      //   //  ...getChildren(this.lastSelectedNode),
+      //   ...getChildren(this.lastSelectedNode.parent)
+      // ]
+      // this.selectedNodeIndex=0
     }
     this.kindNameSuggestionIndex =
       this.kindNameSuggestionIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
@@ -224,23 +234,51 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     this.onKeypress()
   }
   // onArrowKey(type: string) {
+
+  //   this.log('onArrowKey')
   // if (type === 'up') {
-  //   this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
-  // } else if (type === 'down') {
-  //   this.selectedNodeIndex =        this.selectedNodeIndex >= this.navigableNodes.length - 1          ? this.navigableNodes.length - 1          : this.selectedNodeIndex + 1
+  //   this.log('up')
+    
+  // //   this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
+  // // } else if (type === 'down') {
+  // //   this.selectedNodeIndex =        this.selectedNodeIndex >= this.navigableNodes.length - 1          ? this.navigableNodes.length - 1          : this.selectedNodeIndex + 1
   // }
   // else if (type === 'left') {
-  //   this.kindNameSuggestionIndex === -1 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex <= 0 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex - 1
+  //   this.onLeftKey()
+  //   this.log('onLeftKey')
+
+  // //   this.kindNameSuggestionIndex === -1 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex <= 0 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex - 1
   // }
 
   // else if (type === 'right') {
-  //   this.kindNameSuggestionIndex = this.kindNameSuggestionIndex === -1 ? 0 : this.kindNameSuggestionIndex >= this.suggestions.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+  //   this.log('onRightKey')
+
+  //   this.onRightKey()
+  // //   this.kindNameSuggestionIndex = this.kindNameSuggestionIndex === -1 ? 0 : this.kindNameSuggestionIndex >= this.suggestions.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+  // // }
+  // // this.onKeypress()
   // }
-  // this.onKeypress()
-  // }
-  private log(...args: any[]) {
-    appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '))
-  }
+// }
+
+
+
+// LIFE CYCLE and misc utililities
+
+protected onEnd(state: { value: T }) {
+  this.status = 'answered'
+  this.answer = state.value
+  this.render()
+  this.screen.done()
+  // this.log(state, state.value)
+  this.done(state.value)
+}
+protected onError() {
+  this.render('Please enter valid code or selector.')
+}
+protected getCurrentValue(): T {
+  this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex] || this.lastSelectedNode
+  return { selectedNodes: [this.lastSelectedNode] } as any // TODO: check
+}
   protected _run(cb: any) {
     this.done = cb
     const events = observe(this.rl)
@@ -251,9 +289,16 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     events.keypress.pipe(takeUntil(validation.success)).forEach(this.onKeypress.bind(this))
     events.normalizedUpKey.pipe(takeUntil(events.line)).forEach(this.onUpKey.bind(this))
     events.normalizedDownKey.pipe(takeUntil(events.line)).forEach(this.onDownKey.bind(this))
+    // events.normalizedRightKey.pipe(takeUntil(events.line)).forEach(this.onRightKey.bind(this))
+    // events.normalizedLeftKey.pipe(takeUntil(events.line)).forEach(this.onLeftKey.bind(this))
     this.render()
     return this
   }
+
+  private log(...args: any[]) {
+    appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '))
+  }
+
 }
 /**
  * Adapted from inquirer sources. The paginator keeps track of a pointer index in a list and returns* a subset of the choices if the list is too long.
