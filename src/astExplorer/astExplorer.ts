@@ -61,7 +61,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
         : this.kindNameSuggestions
     message += this.paginator.paginate(output, this.selected || 0, this.opt.pageSize)
     message += `Selector: ${this.currentInput}`
-    let bottomContent = `SyntaxKinds Autocomplete (TAB): [${
+    let bottomContent = `SyntaxKinds Autocomplete (TAB): \n${this.lastSelectedNode ?chalk.greenBright( `Selected "${getKindName(this.lastSelectedNode)}" at pos ${this.lastSelectedNode.pos}`) : ''} - [${
       this.kindNameSuggestionIndex !== -1
         ? this.kindNameSuggestions
         : this.kindNameSuggestions
@@ -76,7 +76,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
           .map((s, i, a) => i > 5 ? undefined : s)
           .filter(a => a)
           .join(', ')
-      }]${this.lastSelectedNode ? `Currently selected "${getKindName(this.lastSelectedNode)}" at pos ${this.lastSelectedNode.pos}. TODO: breadcrumb...` : ``}`.trim()
+      }]`.trim()
     if (error || error2) {
       bottomContent = '\n' + chalk.red('>> ') + (error || error2)
     }
@@ -174,7 +174,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     }
     this.onKeypress()
   }
-  
+
   onRightKey() {
     if (!this.currentInput) {
       const children = getChildren(this.lastSelectedNode.parent)
