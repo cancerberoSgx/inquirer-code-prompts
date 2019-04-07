@@ -1,8 +1,8 @@
-import { tsquery } from '@phenomnomnominal/tsquery';
-import chalk from 'chalk';
-import { prompt, Questions } from 'inquirer';
-import * as _ from 'lodash';
-import { Node, SourceFile } from 'typescript';
+import { tsquery } from '@phenomnomnominal/tsquery'
+import chalk from 'chalk'
+import { prompt, Questions } from 'inquirer'
+import * as _ from 'lodash'
+import { Node, SourceFile } from 'typescript'
 const { map, takeUntil } = require('rxjs/operators')
 const Base = require('inquirer/lib/prompts/base')
 const observe = require('inquirer/lib/utils/events')
@@ -81,10 +81,10 @@ export class AstExplorer extends Base {
     this.currentInput = 'Identifier'
     this.rl.line = this.currentInput
     this.sourceFile = tsquery.ast(this.code)
-    this.selectedNodes = tsquery(this.sourceFile, this.currentInput);
+    this.selectedNodes = tsquery(this.sourceFile, this.currentInput)
     this.selectedNodeIndex = 0
     Object.assign(this.opt, {
-      validate: function (val) {
+      validate: function(val) {
         return true
       }
     })
@@ -137,10 +137,8 @@ export class AstExplorer extends Base {
   protected renderChoices() {
     let text = this.sourceFile.getFullText()
     try {
-      this.selectedNodes = tsquery(this.sourceFile, this.currentInput);
-    } catch (error) {
-
-    }
+      this.selectedNodes = tsquery(this.sourceFile, this.currentInput)
+    } catch (error) {}
     this.selectedNodeIndex < this.selectedNodes.length - 1 ? this.selectedNodeIndex : 0
     let output = ''
     let last = 0
@@ -174,13 +172,17 @@ export class AstExplorer extends Base {
    */
   onArrowKey(type: string) {
     if (type === 'up') this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
-    else this.selectedNodeIndex = this.selectedNodeIndex >= this.selectedNodes.length - 1 ? this.selectedNodes.length - 1 : this.selectedNodeIndex + 1
+    else
+      this.selectedNodeIndex =
+        this.selectedNodeIndex >= this.selectedNodes.length - 1
+          ? this.selectedNodes.length - 1
+          : this.selectedNodeIndex + 1
     this.onKeypress()
   }
 }
 
 /**
- * Adapted from inquirer sources. 
+ * Adapted from inquirer sources.
  * The paginator keeps track of a pointer index in a list and returns
  * a subset of the choices if the list is too long.
  */
@@ -213,6 +215,10 @@ class CustomPaginator {
     this.lastIndex = active
     // Duplicate the lines so it give an infinite list look
     const section = ['\n', ...lines].splice(active, pageSize).join('\n')
-    return section + '\n' + chalk.dim('(Navigate Nodes using arrows, type tsquery selectors to filter, enter for selecting node)')
+    return (
+      section +
+      '\n' +
+      chalk.dim('(Navigate Nodes using arrows, type tsquery selectors to filter, enter for selecting node)')
+    )
   }
 }

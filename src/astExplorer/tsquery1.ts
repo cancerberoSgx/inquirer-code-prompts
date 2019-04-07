@@ -1,6 +1,5 @@
+import { tsquery } from '@phenomnomnominal/tsquery'
 
-import { tsquery } from '@phenomnomnominal/tsquery';
- 
 const typescript = `
 class Animal {
     constructor(public name: string) { }
@@ -15,8 +14,8 @@ class Snake extends Animal {
         super.move(distanceInMeters);
     }
 }
-`;
- 
-const ast = tsquery.ast(typescript);
-const nodes = tsquery(ast, 'Identifier[name="Animal"]');
-console.log(nodes.length); // 2
+`
+
+const ast = tsquery.ast(typescript)
+const nodes = tsquery(ast, 'Identifier[name="Animal"]')
+console.log(nodes.length) // 2

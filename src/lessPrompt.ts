@@ -1,6 +1,6 @@
-import chalk from 'chalk';
-import { objects, prompt, Questions } from 'inquirer';
-import * as _ from 'lodash';
+import chalk from 'chalk'
+import { objects, prompt, Questions } from 'inquirer'
+import * as _ from 'lodash'
 
 const { map, takeUntil } = require('rxjs/operators')
 const Base = require('inquirer/lib/prompts/base')
@@ -59,7 +59,7 @@ export class Less extends Base {
     this.selected = 0
     this.rawDefault = 0
     Object.assign(this.opt, {
-      validate: function (val) {
+      validate: function(val) {
         return true
       }
     })
@@ -169,7 +169,7 @@ export class Less extends Base {
  */
 function renderChoices(choices: objects.ChoiceOption[], pointer) {
   let output = ''
-  choices.forEach(function (choice, i) {
+  choices.forEach(function(choice, i) {
     output += '\n'
     const display = choice.name
     output += display
@@ -178,7 +178,7 @@ function renderChoices(choices: objects.ChoiceOption[], pointer) {
 }
 
 /**
- * Adapted from inquirer sources. 
+ * Adapted from inquirer sources.
  * The paginator keeps track of a pointer index in a list and returns
  * a subset of the choices if the list is too long.
  */
