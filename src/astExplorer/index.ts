@@ -1,4 +1,2 @@
-
-export {AstExplorer} from './astExplorer'
+export { AstExplorer } from './astExplorer'
 export * from './astExplorerFn'
-

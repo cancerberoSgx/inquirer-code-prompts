@@ -1,7 +1,7 @@
 import { objects, prompt, Questions } from 'inquirer'
 import * as _ from 'lodash'
-import {AbstractPaginator} from '../base/basicPaginator'
-import { CustomBase } from '../base/types';
+import { AbstractPaginator } from '../base/basicPaginator'
+import { CustomBase } from '../base/types'
 const { map, takeUntil } = require('rxjs/operators')
 const Base = require('inquirer/lib/prompts/base') as typeof CustomBase
 const observe = require('inquirer/lib/utils/events')
@@ -41,7 +41,6 @@ interface Options {
   postfix?: string
   noWrap?: boolean
 }
-
 
 export class Less extends Base {
   min: number

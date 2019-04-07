@@ -1,7 +1,7 @@
-import { prompt } from 'inquirer';
-import {registerPrompt} from 'inquirer'
-import { AstExplorer } from './astExplorer';
-import { ResultValue, Options } from './types';
+import { prompt } from 'inquirer'
+import { registerPrompt } from 'inquirer'
+import { AstExplorer } from './astExplorer'
+import { ResultValue, Options } from './types'
 /**
  * Ast explorer, user can see code, filter entering tsquery selectors and navigate thgouh matched nodes with arrow keys. finally select a node with enter. Usage:
 ```
@@ -32,10 +32,10 @@ console.log({selectedNode: selectedNode.getText()});
  */
 export async function astExplorer(options: Options): Promise<ResultValue> {
   // registerPrompt('ast-explorer', AstExplorer as any)
-  const rows = process.stdout.rows || 24;
-  const choices = options.code.split('\n');
+  const rows = process.stdout.rows || 24
+  const choices = options.code.split('\n')
   const result = await prompt<{
-    ' ': ResultValue;
+    ' ': ResultValue
   }>([
     {
       type: 'ast-explorer',
@@ -44,6 +44,6 @@ export async function astExplorer(options: Options): Promise<ResultValue> {
       paginated: true,
       pageSize: options.pageSize || Math.min(options.pageSize || Infinity, rows)
     }
-  ]);
-  return result[' '];
+  ])
+  return result[' ']
 }

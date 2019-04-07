@@ -1,5 +1,5 @@
-import { Driver } from 'cli-driver';
-import { Helper } from './interactionHelper';
+import { Driver } from 'cli-driver'
+import { Helper } from './interactionHelper'
 
 describe('less', () => {
   let client: Driver
@@ -21,11 +21,14 @@ describe('less', () => {
   })
 
   it('should let scroll long text', async done => {
-    const data1 = await client.enterAndWaitForData('npx ts-node spec/assets/less/lessSample1.ts', 'Adapted from inquirer sources')
+    const data1 = await client.enterAndWaitForData(
+      'npx ts-node spec/assets/less/lessSample1.ts',
+      'Adapted from inquirer sources'
+    )
     // const data1 = await client.getAllData()
     // expect().not.toContain('Move the pointer only when the user')
     await helper.down(10)
-    
+
     await client.write('')
     const data2 = await client.getDataFromLastWrite()
     expect(data1).not.toEqual(data2)
@@ -33,5 +36,4 @@ describe('less', () => {
     await helper.expectLastExitCode(true)
     done()
   })
-
 })
