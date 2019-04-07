@@ -1,7 +1,7 @@
 {
   "name": "inquirer-code-prompts",
   "version": "0.0.1",
-  "description": "Code / Parsing / AST TypeScript / JavasScript related inquirer plugins prompts",
+  "description": "Inquirer prompts plugins related to Code / Parsing / AST / TypeScript / JavasScript",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "scripts": {

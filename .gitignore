@@ -4,3 +4,4 @@ tmp
 *.tgz
 /package*
 .DS_Store
+*.log

@@ -10,12 +10,12 @@ const wrapAnsi = require('wrap-ansi')
 /**
  * unix `less` command like prompt to render large text with pagination. WHen pressing enter it exits.
  *
- * usage:
- * ```
- * import {less, Less} form 'inquirer-less'
- * registerPrompt('less', Less as any)
- * await less({text: `long text possible with ansi styles`})
- * ```
+ * Usage:
+```ts
+import {less, Less} form 'inquirer-less'
+registerPrompt('less', Less as any)
+await less({text: `long text possible with ansi styles`})
+```
  *
  * TODO: move to its own project
  */

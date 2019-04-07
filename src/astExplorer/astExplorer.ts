@@ -3,9 +3,16 @@ import chalk from 'chalk'
 import { prompt, Questions } from 'inquirer'
 import * as _ from 'lodash'
 import { Node, SourceFile } from 'typescript'
+import { appendFileSync } from 'fs'
+import { nodeKinds } from './nodeKinds'
 const { map, takeUntil } = require('rxjs/operators')
 const Base = require('inquirer/lib/prompts/base')
 const observe = require('inquirer/lib/utils/events')
+
+interface KeyEvent {
+  value: string
+  key: { sequence: string; name: string; ctrl: boolean; meta: boolean; shift: boolean }
+}
 
 /**
  * Ast explorer, user can see code, filter entering tsquery selectors and navigate thgouh matched nodes with arrow keys. finally select a node with enter.
@@ -41,8 +48,7 @@ console.log({selectedNode: selectedNode.getText()});
  * TODO: move to its own project
  * TODO: pass directly all the options to the prompt - remove this function
  */
-export async function astExplorer(options: Options): Promise<any> {
-  const columns = process.stdout.columns || 79
+export async function astExplorer(options: Options): Promise<Node> {
   const rows = process.stdout.rows || 24
   const choices = options.code.split('\n')
   const result = await prompt([
@@ -67,43 +73,43 @@ export class AstExplorer extends Base {
   currentInput: string
   sourceFile: SourceFile
   selectedNodeIndex = 0
-
-  constructor(questions: Questions, rl, answers) {
+  suggestionIndex = -1
+  suggestions: string[] = []
+  constructor(questions: Questions, rl: any, answers: any) {
     super(questions, rl, answers)
     if (!this.opt.choices) {
       this.throwParamError('choices')
     }
-    this.code = this.opt.choices.choices.map(c => c.name).join('\n')
+    this.code = this.opt.choices.choices.map((c: { name: any }) => c.name).join('\n')
     const rows = process.stdout.rows || 24
     this.min = 0
     this.max = Math.max(this.opt.choices.choices.length, rows) - rows + 1
-    this.rawDefault = 0
     this.currentInput = 'Identifier'
     this.rl.line = this.currentInput
     this.sourceFile = tsquery.ast(this.code)
     this.selectedNodes = tsquery(this.sourceFile, this.currentInput)
     this.selectedNodeIndex = 0
-    Object.assign(this.opt, {
-      validate: function(val) {
-        return true
-      }
-    })
-    this.opt.default = null
     this.paginator = new CustomPaginator(this.screen)
   }
-  /**
-   * When user press a key
-   */
-  onKeypress(e?: any) {
-    this.currentInput = '' + this.rl.line
-    this.render()
+  onKeypress(e?: KeyEvent) {
+    let error: string | undefined
+    if (e && e.key.name === 'tab') {
+      this.suggestionIndex++
+      this.suggestionIndex >= this.suggestions.length ? 0 : this.suggestionIndex
+      if (!this.suggestions[this.suggestionIndex]) {
+        error = 'No available suggestions'
+      } else {
+        this.currentInput = this.suggestions[this.suggestionIndex]
+        this.rl.line = this.currentInput
+      }
+    } else if (e && e.value) { // is a letter
+      this.suggestionIndex = -1
+      this.currentInput = this.rl.line
+    }
+    // appendFileSync('l.log', '**' + this.currentInput)
+    this.render(error)
   }
-  /**
-   * Start the Inquiry session
-   * @param  {Function} cb      Callback when prompt is done
-   * @return {this}
-   */
-  _run(cb) {
+  _run(cb: any) {
     this.done = cb
     const events = observe(this.rl)
     const submit = events.line.pipe(map(this.getCurrentValue.bind(this)))
@@ -118,23 +124,42 @@ export class AstExplorer extends Base {
   }
   render(error?: string) {
     let message = ''
-    const bottomContent = ''
-    const choicesStr = this.renderChoices()
-    message += this.paginator.paginate(choicesStr, this.selected, this.opt.pageSize)
-    message += this.currentInput
+    const lowerInput =
+      this.currentInput
+        .toLowerCase()
+        .split(' ')
+        .pop() || this.currentInput.toLowerCase()
+    const choicesStr = this.renderCode()
+    this.suggestions =
+      this.suggestionIndex === -1 ? nodeKinds.filter(k => k.toLowerCase().includes(lowerInput)) : this.suggestions
+    message += this.paginator.paginate(choicesStr, this.selected || 0, this.opt.pageSize)
+    message += `Selector: ${this.currentInput}`
+    let bottomContent = `SyntaxKinds Autocomplete (TAB): [${
+      this.suggestionIndex !== -1
+        ? this.suggestions
+        : this.suggestions
+            .map(k => {
+              const index = k.toLowerCase().indexOf(lowerInput)
+              const a = `${chalk.redBright(index === -1 ? '' : k.substring(0, lowerInput.length))}${k.substring(
+                index === -1 ? 0 : lowerInput.length,
+                k.length
+              )}`
+              return a
+            })
+            .map((s, i, a) => (i > 5 ? undefined : s))
+            .filter(a => a)
+            .join(', ')
+    }]
+    `.trim()
+    if (error) {
+      bottomContent = '\n' + chalk.red('>> ') + error
+    }
     this.screen.render(message, bottomContent)
   }
-  /**
-   * When user press `enter` key
-   */
   getCurrentValue() {
     return this.selectedNodes[this.selectedNodeIndex]
   }
-  /**
-   * @param  {Number} pointer Position of the pointer
-   * @return {String}         Rendered content
-   */
-  protected renderChoices() {
+  protected renderCode() {
     let text = this.sourceFile.getFullText()
     try {
       this.selectedNodes = tsquery(this.sourceFile, this.currentInput)
@@ -151,7 +176,7 @@ export class AstExplorer extends Base {
     output += text.substring(last, text.length)
     return output
   }
-  onEnd(state) {
+  onEnd(state: { value: any }) {
     this.status = 'answered'
     this.answer = state.value
     this.render()
@@ -167,20 +192,25 @@ export class AstExplorer extends Base {
   onDownKey() {
     this.onArrowKey('down')
   }
-  /**
-   * @param {String} type Arrow type: up or down
-   */
   onArrowKey(type: string) {
-    if (type === 'up') this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
-    else
+    if (type === 'up') {
+      this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
+    } else if (type === 'down') {
       this.selectedNodeIndex =
         this.selectedNodeIndex >= this.selectedNodes.length - 1
           ? this.selectedNodes.length - 1
           : this.selectedNodeIndex + 1
+    }
+    // else if (type === 'left') {
+    //   this.suggestionIndex === -1 ? this.suggestions.length - 1 : this.suggestionIndex <= 0 ? this.suggestions.length - 1 : this.suggestionIndex - 1
+    // }
+
+    // else if (type === 'right') {
+    //   this.suggestionIndex = this.suggestionIndex === -1 ? 0 : this.suggestionIndex >= this.suggestions.length - 1 ? 0 : this.suggestionIndex + 1
+    // }
     this.onKeypress()
   }
 }
-
 /**
  * Adapted from inquirer sources.
  * The paginator keeps track of a pointer index in a list and returns
@@ -195,13 +225,14 @@ class CustomPaginator {
     this.lastIndex = 0
     this.screen = screen
   }
-  paginate(output: string, active, pageSize) {
+  paginate(output: string, active: number, pageSize: number | undefined) {
     pageSize = pageSize || 7
+    var active_: string[]
     const middleOfList = Math.floor(pageSize / 2)
     let lines = output.split('\n')
     if (this.screen) {
       lines = this.screen.breakLines(lines)
-      active = lines.splice(0, active)
+      active_ = lines.splice(0, active)
       lines = _.flatten(lines)
     }
     // Make sure there's enough lines to paginate

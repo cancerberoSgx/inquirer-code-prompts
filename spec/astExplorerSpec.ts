@@ -1,5 +1,4 @@
 import { ansi, Driver } from 'cli-driver'
-import { cp, mkdir, rm } from 'shelljs'
 import { Helper } from './interactionHelper'
 
 describe('astExplorerSpec', () => {
