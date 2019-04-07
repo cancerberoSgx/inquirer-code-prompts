@@ -8,8 +8,10 @@ import { createWrappedNode } from 'ts-morph';
 import * as ts from 'typescript';
 import { getChildren } from 'typescript-ast-util';
 import { nodeKinds } from './nodeKinds';
-import { CustomBase, InquirerBase, KeyEvent, ResultValue } from './types';
+import { ResultValue } from './types';
+import { CustomBase, InquirerBase, KeyEvent } from "../base/types";
 import { Keys } from 'cli-driver/lib/src/ansi';
+import { AbstractPaginator } from '../base/basicPaginator';
 const Base = require('inquirer/lib/prompts/base') as typeof CustomBase
 const observe = require('inquirer/lib/utils/events')
 
@@ -25,7 +27,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
   navigableNativeNodes: ts.Node[] = []
   lastSelectedNode: ts.Node
   code: string
-  paginator: CustomPaginator
+  paginator: AbstractPaginator
   selected: number = 0 //deprecate
   constructor(questions: Questions, rl: any, answers: any) {
     super(questions, rl, answers)
@@ -42,7 +44,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     this.sourceFileNative = tsquery.ast(this.code)
     // this.sourceFile = createWrappedNode(this.sourceFileNative)
     this.selectedNodeIndex = 0
-    this.paginator = new CustomPaginator(this.screen)
+    this.paginator = new AbstractPaginator(this.screen)
     // this.sourceFileNative = getChild
     // this.navigableNodes = getChildrenForEachChild(this.sourceFile)
     this.navigableNativeNodes = getChildren(this.sourceFileNative)
@@ -264,7 +266,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
 
 // LIFE CYCLE and misc utililities
 
-protected onEnd(state: { value: T }) {
+private onEnd(state: { value: T }) {
   this.status = 'answered'
   this.answer = state.value
   this.render()
@@ -272,14 +274,14 @@ protected onEnd(state: { value: T }) {
   // this.log(state, state.value)
   this.done(state.value)
 }
-protected onError() {
+private onError() {
   this.render('Please enter valid code or selector.')
 }
-protected getCurrentValue(): T {
+getCurrentValue(): T {
   this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex] || this.lastSelectedNode
   return { selectedNodes: [this.lastSelectedNode] } as any // TODO: check
 }
-  protected _run(cb: any) {
+  private _run(cb: any) {
     this.done = cb
     const events = observe(this.rl)
     const submit = events.line.pipe(map(this.getCurrentValue.bind(this)))
@@ -299,50 +301,4 @@ protected getCurrentValue(): T {
     appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '))
   }
 
-}
-/**
- * Adapted from inquirer sources. The paginator keeps track of a pointer index in a list and returns* a subset of the choices if the list is too long.
- */
-class CustomPaginator {
-  pointer: number
-  lastIndex: number
-  screen: any
-  constructor(screen?: any) {
-    this.pointer = 0
-    this.lastIndex = 0
-    this.screen = screen
-  }
-  paginate(output: string, active: number, pageSize: number | undefined) {
-    pageSize = pageSize || 7
-    var active_: string[]
-    const middleOfList = Math.floor(pageSize / 2)
-    let lines = output.split('\n')
-    if (this.screen) {
-      lines = this.screen.breakLines(lines)
-      active_ = lines.splice(0, active)
-      lines = _.flatten(lines)
-    }
-    // Make sure there's enough lines to paginate
-    if (lines.length <= pageSize) {
-      return output
-    }
-    // Move the pointer only when the user go down and limit it to the middle of the list
-    if (this.pointer < middleOfList && this.lastIndex < active && active - this.lastIndex < pageSize) {
-      this.pointer = Math.min(middleOfList, this.pointer + active - this.lastIndex)
-    }
-    this.lastIndex = active
-    // Duplicate the lines so it give an infinite list look
-    const section = ['\n', ...lines].splice(active, pageSize).join('\n')
-    return (
-      section +
-      '\n' +
-      chalk.dim('(Navigate Nodes using arrows, type tsquery selectors to filter, enter for selecting node)')
-    )
-  }
-}
-
-// utitilty functions
-
-function wrapNodes(nodes: ts.Node[], sourceFile: ts.SourceFile) {
-  return nodes.map(n => createWrappedNode(n, { sourceFile }))
 }

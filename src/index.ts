@@ -1,2 +1,3 @@
 export * from './astExplorer/astExplorer'
-export * from './lessPrompt'
+export * from './less/lessPrompt'
+export * from './base/types'

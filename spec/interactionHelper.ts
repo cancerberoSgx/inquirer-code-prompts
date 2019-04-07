@@ -1,4 +1,5 @@
 import { ansi, Driver } from 'cli-driver';
+import { ClientRequest } from 'http';
 
 export class Helper {
 
@@ -38,6 +39,13 @@ export class Helper {
 
   async focusCheckboxListItem(label: string) {
     return this.arrowUntilFocused(this.client, label, s => s.includes(`❯◯ ${label}`))
+  }
+
+  async down(n:number){
+    for (let i = 0; i <n; i++) {
+     await this.client.write(ansi.cursor.down())
+     await this.client.time(10)
+    }
   }
 
   async arrowUntilFocused(

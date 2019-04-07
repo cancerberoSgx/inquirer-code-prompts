@@ -55,6 +55,10 @@ Example to come.
 
 ## TODO 
 
+### general
+
+less parametrize the paginator bottom text
+
 ### jsxExplorer
   * should print a breadcrumb and basic info when navigating nodes with arrows.
  
