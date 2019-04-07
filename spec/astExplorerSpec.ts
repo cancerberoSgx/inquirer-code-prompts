@@ -21,14 +21,27 @@ describe('astExplorerSpec', () => {
   })
 
   it('should run simple test basic usage path', async done => {
-    let data = await client.enterAndWaitForData('npx ts-node spec/astExplorer/test1.ts', 'Animal')
-    data = await client.enterAndWaitForData('', 'selectedNode')
+    await client.enterAndWaitForData('npx ts-node spec/astExplorer/test1.ts', 'Animal')
+    await client.enterAndWaitForData('', 'selectedNode')
     expect(client.getStrippedDataFromLastWrite()).toContain(`{ selectedNode: 'Animal' }`)
     await helper.expectLastExitCode(true)
 
-    data = await client.enterAndWaitForData('npx ts-node spec/astExplorer/test1.ts', 'Animal')
+    await client.enterAndWaitForData('npx ts-node spec/astExplorer/test1.ts', 'Animal')
     await client.writeAndWaitForData(ansi.cursor.down(2), 'class')
-    data = await client.enterAndWaitForData('', 'selectedNode')
+    await client.enterAndWaitForData('', 'selectedNode')
+    expect(client.getStrippedDataFromLastWrite()).toContain(`{ selectedNode: 'name' }`)
+    await helper.expectLastExitCode(true)
+    done()
+  })
+  it('should navigate thought all kind of nodes one by one', async done => {
+    await client.enterAndWaitForData('npx ts-node spec/astExplorer/test1.ts', 'Animal')
+    await client.enterAndWaitForData('', 'selectedNode')
+    expect(client.getStrippedDataFromLastWrite()).toContain(`{ selectedNode: 'Animal' }`)
+    await helper.expectLastExitCode(true)
+
+    await client.enterAndWaitForData('npx ts-node spec/astExplorer/test1.ts', 'Animal')
+    await client.writeAndWaitForData(ansi.cursor.down(2), 'class')
+    await client.enterAndWaitForData('', 'selectedNode')
     expect(client.getStrippedDataFromLastWrite()).toContain(`{ selectedNode: 'name' }`)
     await helper.expectLastExitCode(true)
     done()

@@ -1,4 +1,5 @@
-import { astExplorer, AstExplorer } from '../../src/astExplorer/astExplorer'
+import { AstExplorer } from '../../src/astExplorer/astExplorer'
+import { astExplorer } from "../../src/astExplorer/index";
 import { registerPrompt } from 'inquirer'
 
 registerPrompt('ast-explorer', AstExplorer as any)
@@ -19,7 +20,12 @@ class Snake extends Animal {
   }
 }
     `
-  const selectedNode = await astExplorer({ code })
-  console.log({ selectedNode: selectedNode.getText() });
+  const {selectedNodes} = await astExplorer({ code })
+  if(selectedNodes.length){
+    const node = selectedNodes[0]
+    console.log(node.getText());
+    
+  }
+  // console.log(selectedNodes.length ? selectedNodes[0] : 'no selected nodes');
 }
 test()

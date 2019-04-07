@@ -47,7 +47,7 @@ interface Options {
  * copied from RawList and simplified so it simulates the less unix command to scroll long texts.
  */
 export class Less extends Base {
-  constructor(questions: Questions, rl, answers) {
+  constructor(questions: Questions, rl:any, answers:any) {
     super(questions, rl, answers)
     if (!this.opt.choices) {
       this.throwParamError('choices')
@@ -59,7 +59,7 @@ export class Less extends Base {
     this.selected = 0
     this.rawDefault = 0
     Object.assign(this.opt, {
-      validate: function(val) {
+      validate: function(val: any) {
         return true
       }
     })
@@ -72,7 +72,7 @@ export class Less extends Base {
    * @param  {Function} cb      Callback when prompt is done
    * @return {this}
    */
-  _run(cb) {
+  _run(cb: any) {
     this.done = cb
     const events = observe(this.rl)
     const submit = events.line.pipe(map(this.getCurrentValue.bind(this)))
@@ -114,7 +114,7 @@ export class Less extends Base {
     return choice ? choice.value : null
   }
 
-  onEnd(state) {
+  onEnd(state: any) {
     this.status = 'answered'
     this.answer = state.value
     this.render()
@@ -167,7 +167,7 @@ export class Less extends Base {
  * @param  {Number} pointer Position of the pointer
  * @return {String}         Rendered content
  */
-function renderChoices(choices: objects.ChoiceOption[], pointer) {
+function renderChoices(choices: objects.ChoiceOption[], pointer: any) {
   let output = ''
   choices.forEach(function(choice, i) {
     output += '\n'
@@ -191,7 +191,7 @@ class CustomPaginator {
     this.lastIndex = 0
     this.screen = screen
   }
-  paginate(output: string, active, pageSize) {
+  paginate(output: string, active: any, pageSize: number) {
     pageSize = pageSize || 7
     const middleOfList = Math.floor(pageSize / 2)
     let lines = output.split('\n')

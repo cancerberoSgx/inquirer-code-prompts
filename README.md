@@ -51,3 +51,17 @@ await less({text: `long text possible with ansi styles`})
 Show several file's diff inquirering by folder/file and seeing diff with color individual files or the whole thing. 
 
 Example to come.
+
+
+## TODO 
+
+### jsxExplorer
+  * should print a breadcrumb and basic info when navigating nodes with arrows.
+ 
+ * should let me visit all childs with arrows withouth filter - should allow to ignore the selector. If user delete all text then it won't filter and let me nav with arrows (see next) 
+
+  * should support hierarchical navigation, I can enter inside childs, and nav outside to ancestors
+  keys: right - left arrows go to next node in order of start/pos in the sourceFile. If there is a selector they go to next/prev matched node
+  up-down arrows. 
+
+  * with control will let me temporarily ignore the selector and move freely. when control is keyup it modifies the selector to match the current node  

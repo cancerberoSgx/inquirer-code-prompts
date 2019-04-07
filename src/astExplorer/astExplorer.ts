@@ -1,80 +1,32 @@
 import { tsquery } from '@phenomnomnominal/tsquery'
 import chalk from 'chalk'
-import { prompt, Questions } from 'inquirer'
+import { Questions } from 'inquirer'
 import * as _ from 'lodash'
-import { Node, SourceFile } from 'typescript'
 import { appendFileSync } from 'fs'
 import { nodeKinds } from './nodeKinds'
-const { map, takeUntil } = require('rxjs/operators')
-const Base = require('inquirer/lib/prompts/base')
+import { map, takeUntil } from 'rxjs/operators'
+const Base = require('inquirer/lib/prompts/base') as typeof CustomBase
 const observe = require('inquirer/lib/utils/events')
+import { createWrappedNode, OutputFile } from 'ts-morph';
+import {getChildren, getAscendants} from 'typescript-ast-util'
+import * as ts from 'typescript'
+import { CustomBase, InquirerBase, KeyEvent } from './types';
+import { ResultValue } from './index';
 
-interface KeyEvent {
-  value: string
-  key: { sequence: string; name: string; ctrl: boolean; meta: boolean; shift: boolean }
-}
-
-/**
- * Ast explorer, user can see code, filter entering tsquery selectors and navigate thgouh matched nodes with arrow keys. finally select a node with enter.
- *
- * usage:
-```
-import {astExplorer, AstExplorer} from './astExplorer'
-import {registerPrompt} from 'inquirer'
-import { tsquery } from '@phenomnomnominal/tsquery';
-
-registerPrompt('ast-explorer', AstExplorer as any)
-
-async function test(){
-  const code = `
-class Animal {
-  constructor(public name: string) { }
-  move(distanceInMeters: number = 0) {
-    console.log('hello');
-  }
-}
-class Snake extends Animal {
-  constructor(name: string) { super(name); }
-  move(distanceInMeters = 5) {
-    console.log("Slithering...");
-    super.move(distanceInMeters);
-  }
-}
-    `
-  const selectedNode= await astExplorer({code})
-console.log({selectedNode: selectedNode.getText()});
- * })
- * ```
- * TODO: move to its own project
- * TODO: pass directly all the options to the prompt - remove this function
- */
-export async function astExplorer(options: Options): Promise<Node> {
-  const rows = process.stdout.rows || 24
-  const choices = options.code.split('\n')
-  const result = await prompt([
-    {
-      type: 'ast-explorer',
-      name: ' ',
-      choices,
-      paginated: true,
-      pageSize: options.pageSize || Math.min(options.pageSize || Infinity, rows)
-    }
-  ])
-  return result[' ']
-}
-
-interface Options {
-  code: string
-  pageSize?: number
-}
-
-export class AstExplorer extends Base {
-  selectedNodes: Node[]
+export class AstExplorer<T extends ResultValue> extends Base implements InquirerBase<T> {
   currentInput: string
-  sourceFile: SourceFile
-  selectedNodeIndex = 0
-  suggestionIndex = -1
-  suggestions: string[] = []
+  // sourceFile: SourceFile
+  sourceFileNative: ts.SourceFile
+  selectedNodeIndex: number = 0
+  kindNameSuggestionIndex: number = -1
+  kindNameSuggestions: string[] = []
+  // navigableNodes: ts.Node[] = []
+  // kindNameSuggestions:string[]
+  navigableNativeNodes: ts.Node[] = []
+  lastSelectedNode: ts.Node
+  code: string
+  paginator: CustomPaginator
+  selected:number=0 //deprecate
   constructor(questions: Questions, rl: any, answers: any) {
     super(questions, rl, answers)
     if (!this.opt.choices) {
@@ -82,34 +34,211 @@ export class AstExplorer extends Base {
     }
     this.code = this.opt.choices.choices.map((c: { name: any }) => c.name).join('\n')
     const rows = process.stdout.rows || 24
-    this.min = 0
-    this.max = Math.max(this.opt.choices.choices.length, rows) - rows + 1
+    // this.min = 0
+    // this.max = Math.max(this.opt.choices.choices.length, rows) - rows + 1
     this.currentInput = 'Identifier'
     this.rl.line = this.currentInput
-    this.sourceFile = tsquery.ast(this.code)
-    this.selectedNodes = tsquery(this.sourceFile, this.currentInput)
+    // TODO: check exception because of bad code and report
+    this.sourceFileNative = tsquery.ast(this.code)
+    // this.sourceFile = createWrappedNode(this.sourceFileNative)
     this.selectedNodeIndex = 0
     this.paginator = new CustomPaginator(this.screen)
+    // this.sourceFileNative = getChild
+    // this.navigableNodes = getChildrenForEachChild(this.sourceFile)
+    this.navigableNativeNodes = getChildren(this.sourceFileNative)
+    // this.currentTreeNavigationNode
+    this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex]
+    this.opt = {
+      ...this.opt,
+      validate(val: T) {
+        return true
+      }
+    }
   }
   onKeypress(e?: KeyEvent) {
     let error: string | undefined
     if (e && e.key.name === 'tab') {
-      this.suggestionIndex++
-      this.suggestionIndex >= this.suggestions.length ? 0 : this.suggestionIndex
-      if (!this.suggestions[this.suggestionIndex]) {
+      //On TAB we advance to next syntax kind suggestion if any. this.currentInput is reset to that value. or show error if no suggestion left
+      this.kindNameSuggestionIndex++
+      this.kindNameSuggestionIndex >= this.kindNameSuggestions.length ? 0 : this.kindNameSuggestionIndex
+      if (!this.kindNameSuggestions[this.kindNameSuggestionIndex]) {
         error = 'No available suggestions'
       } else {
-        this.currentInput = this.suggestions[this.suggestionIndex]
+        this.currentInput = this.kindNameSuggestions[this.kindNameSuggestionIndex]
         this.rl.line = this.currentInput
       }
     } else if (e && e.value) { // is a letter
-      this.suggestionIndex = -1
+      this.kindNameSuggestionIndex = -1
       this.currentInput = this.rl.line
     }
-    // appendFileSync('l.log', '**' + this.currentInput)
+    // this.log(this.currentInput, e);
     this.render(error)
   }
-  _run(cb: any) {
+  render(error2?: string) {
+    let message = ''
+    const lowerInput =
+      this.currentInput
+        .toLowerCase()
+        .split(' ')
+        .pop() || this.currentInput.toLowerCase()
+    // let output = ''
+    // try {
+      const {output, error } = this.renderCode()
+    // } catch c(er) {
+      // error = er + ''
+    // }
+    this.kindNameSuggestions =
+      this.kindNameSuggestionIndex === -1 ? nodeKinds.filter(k => k.toLowerCase().includes(lowerInput)) : this.kindNameSuggestions
+    message += this.paginator.paginate(output, this.selected || 0, this.opt.pageSize)
+    message += `Selector: ${this.currentInput}`
+    let bottomContent = `SyntaxKinds Autocomplete (TAB): [${
+      this.kindNameSuggestionIndex !== -1
+        ? this.kindNameSuggestions
+        : this.kindNameSuggestions
+          .map(k => {
+            const index = k.toLowerCase().indexOf(lowerInput)
+            const a = `${chalk.redBright(index === -1 ? '' : k.substring(0, lowerInput.length))}${k.substring(
+              index === -1 ? 0 : lowerInput.length,
+              k.length
+            )}`
+            return a
+          })
+          .map((s, i, a) => (i > 5 ? undefined : s))
+          .filter(a => a)
+          .join(', ')
+      }]
+    `.trim()
+    if (error ||error2) {
+      bottomContent = '\n' + chalk.red('>> ') + (error||error2)
+    }
+    this.screen.render(message, bottomContent)
+  }
+  getCurrentValue(): T {
+    this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex] || this.lastSelectedNode
+    return { selectedNodes: [this.lastSelectedNode] } as any // TODO: check
+  }
+  /** it parses code and could throw! Called by render().  TODO performance perhaps input dont change and nothing change to re-compile   */
+  protected renderCode() {
+    let text = this.sourceFileNative.getFullText()
+    let error: any
+    // if (this.currentInput === '') {
+    //   // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
+    //   this.navigableNativeNodes = [
+    //     // ...getAscendants(this.lastSelectedNode),
+    //      ...getChildren(this.lastSelectedNode), 
+    //      ...getChildren(this.lastSelectedNode.parent)]
+    // }
+    // else {
+      if(this.currentInput){
+      try {
+        
+      this.navigableNativeNodes = tsquery(this.sourceFileNative, this.currentInput)
+      // this.navigableNativeNodes = wrapNodes(this.navigableNativeNodes, this.sourceFileNative)
+      } catch (er) {
+        error=er
+      }
+    }
+    this.selectedNodeIndex < this.navigableNativeNodes.length - 1 ? this.selectedNodeIndex : 0
+    let output = ''
+    let last = 0
+    this.navigableNativeNodes.forEach((node, i) => {
+      const nodeText = node.getFullText()
+      const painted = this.selectedNodeIndex === i ? chalk.red(nodeText) : chalk.blue(nodeText)
+      output = output += text.substring(last, node.getFullStart()) + painted
+      last = node.getEnd()
+    })
+    output += text.substring(last, text.length)
+    return {output, error}
+  }
+  onEnd(state: { value: T }) {
+    this.status = 'answered'
+    this.answer = state.value
+    this.render()
+    this.screen.done()
+    // this.log(state, state.value)
+    this.done(state.value)
+  }
+  onError() {
+    this.render('Please enter valid code or selector.')
+  }
+  onUpKey() {
+    if (!this.currentInput) {
+      // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
+      this.navigableNativeNodes = [
+        ...getAscendants(this.lastSelectedNode),
+      //   //  ...getChildren(this.lastSelectedNode), 
+      //   //  ...getChildren(this.lastSelectedNode.parent)
+      ]
+    }
+    // else {
+      this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length-1 : this.selectedNodeIndex - 1
+    // }  
+    this.onKeypress()
+
+  }
+  onDownKey() {
+    if (!this.currentInput) {
+      // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
+      this.navigableNativeNodes = [
+        // ...getAscendants(this.lastSelectedNode),
+         ...getChildren(this.lastSelectedNode), 
+        //  ...getChildren(this.lastSelectedNode.parent)
+      ]
+    }
+    // else {
+
+      this.selectedNodeIndex = this.selectedNodeIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.selectedNodeIndex + 1
+    // }
+    // this.onArrowKey('down')
+    this.onKeypress()
+
+  }
+  onLeftKey() {
+   if (!this.currentInput) {
+      // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
+      this.navigableNativeNodes = [
+        // ...getAscendants(this.lastSelectedNode),
+        //  ...getChildren(this.lastSelectedNode), 
+         ...getChildren(this.lastSelectedNode.parent)
+      ]
+    }
+    // this.onArrowKey('down')
+    this.selectedNodeIndex = this.selectedNodeIndex < 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
+    this.onKeypress()
+  }
+  onRightKey() {
+    if (!this.currentInput) {
+      // this.currentTreeNavigationNode = this.currentTreeNavigationNode || this.sourceFile
+      this.navigableNativeNodes = [
+        // ...getAscendants(this.lastSelectedNode),
+        //  ...getChildren(this.lastSelectedNode), 
+         ...getChildren(this.lastSelectedNode.parent)
+      ]
+    }
+    this.kindNameSuggestionIndex = this.kindNameSuggestionIndex >=this.navigableNativeNodes.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+    //  === -1 ? 0 : this.kindNameSuggestionIndex >= this.kindNameSuggestions.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+    this.onKeypress()
+
+  }
+  // onArrowKey(type: string) {
+    // if (type === 'up') {
+    //   this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
+    // } else if (type === 'down') {
+    //   this.selectedNodeIndex =        this.selectedNodeIndex >= this.navigableNodes.length - 1          ? this.navigableNodes.length - 1          : this.selectedNodeIndex + 1
+    // }
+    // else if (type === 'left') {
+    //   this.kindNameSuggestionIndex === -1 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex <= 0 ? this.suggestions.length - 1 : this.kindNameSuggestionIndex - 1
+    // }
+
+    // else if (type === 'right') {
+    //   this.kindNameSuggestionIndex = this.kindNameSuggestionIndex === -1 ? 0 : this.kindNameSuggestionIndex >= this.suggestions.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+    // }
+    // this.onKeypress()
+  // }
+  private log(...args: any[]) {
+    appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '));
+  }
+  protected _run(cb: any) {
     this.done = cb
     const events = observe(this.rl)
     const submit = events.line.pipe(map(this.getCurrentValue.bind(this)))
@@ -122,99 +251,10 @@ export class AstExplorer extends Base {
     this.render()
     return this
   }
-  render(error?: string) {
-    let message = ''
-    const lowerInput =
-      this.currentInput
-        .toLowerCase()
-        .split(' ')
-        .pop() || this.currentInput.toLowerCase()
-    const choicesStr = this.renderCode()
-    this.suggestions =
-      this.suggestionIndex === -1 ? nodeKinds.filter(k => k.toLowerCase().includes(lowerInput)) : this.suggestions
-    message += this.paginator.paginate(choicesStr, this.selected || 0, this.opt.pageSize)
-    message += `Selector: ${this.currentInput}`
-    let bottomContent = `SyntaxKinds Autocomplete (TAB): [${
-      this.suggestionIndex !== -1
-        ? this.suggestions
-        : this.suggestions
-            .map(k => {
-              const index = k.toLowerCase().indexOf(lowerInput)
-              const a = `${chalk.redBright(index === -1 ? '' : k.substring(0, lowerInput.length))}${k.substring(
-                index === -1 ? 0 : lowerInput.length,
-                k.length
-              )}`
-              return a
-            })
-            .map((s, i, a) => (i > 5 ? undefined : s))
-            .filter(a => a)
-            .join(', ')
-    }]
-    `.trim()
-    if (error) {
-      bottomContent = '\n' + chalk.red('>> ') + error
-    }
-    this.screen.render(message, bottomContent)
-  }
-  getCurrentValue() {
-    return this.selectedNodes[this.selectedNodeIndex]
-  }
-  protected renderCode() {
-    let text = this.sourceFile.getFullText()
-    try {
-      this.selectedNodes = tsquery(this.sourceFile, this.currentInput)
-    } catch (error) {}
-    this.selectedNodeIndex < this.selectedNodes.length - 1 ? this.selectedNodeIndex : 0
-    let output = ''
-    let last = 0
-    this.selectedNodes.forEach((node, i) => {
-      const nodeText = node.getFullText()
-      const painted = this.selectedNodeIndex === i ? chalk.red(nodeText) : chalk.blue(nodeText)
-      output = output += text.substring(last, node.getFullStart()) + painted
-      last = node.getEnd()
-    })
-    output += text.substring(last, text.length)
-    return output
-  }
-  onEnd(state: { value: any }) {
-    this.status = 'answered'
-    this.answer = state.value
-    this.render()
-    this.screen.done()
-    this.done(state.value)
-  }
-  onError() {
-    this.render('Please enter a valid index')
-  }
-  onUpKey() {
-    this.onArrowKey('up')
-  }
-  onDownKey() {
-    this.onArrowKey('down')
-  }
-  onArrowKey(type: string) {
-    if (type === 'up') {
-      this.selectedNodeIndex = this.selectedNodeIndex <= 0 ? 0 : this.selectedNodeIndex - 1
-    } else if (type === 'down') {
-      this.selectedNodeIndex =
-        this.selectedNodeIndex >= this.selectedNodes.length - 1
-          ? this.selectedNodes.length - 1
-          : this.selectedNodeIndex + 1
-    }
-    // else if (type === 'left') {
-    //   this.suggestionIndex === -1 ? this.suggestions.length - 1 : this.suggestionIndex <= 0 ? this.suggestions.length - 1 : this.suggestionIndex - 1
-    // }
 
-    // else if (type === 'right') {
-    //   this.suggestionIndex = this.suggestionIndex === -1 ? 0 : this.suggestionIndex >= this.suggestions.length - 1 ? 0 : this.suggestionIndex + 1
-    // }
-    this.onKeypress()
-  }
 }
 /**
- * Adapted from inquirer sources.
- * The paginator keeps track of a pointer index in a list and returns
- * a subset of the choices if the list is too long.
+ * Adapted from inquirer sources. The paginator keeps track of a pointer index in a list and returns* a subset of the choices if the list is too long.
  */
 class CustomPaginator {
   pointer: number
@@ -252,4 +292,13 @@ class CustomPaginator {
       chalk.dim('(Navigate Nodes using arrows, type tsquery selectors to filter, enter for selecting node)')
     )
   }
+}
+
+
+// utitilty functions
+
+function wrapNodes(nodes: ts.Node[], sourceFile: ts.SourceFile) {
+  return nodes.map(n =>
+    createWrappedNode(n, { sourceFile })
+  )
 }
