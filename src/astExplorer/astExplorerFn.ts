@@ -1,7 +1,5 @@
-import { prompt } from 'inquirer'
-import { registerPrompt } from 'inquirer'
-import { AstExplorer } from './astExplorer'
-import { ResultValue, Options } from './types'
+import { prompt } from 'inquirer';
+import { Options, ResultValue } from './types';
 /**
  * Ast explorer, user can see code, filter entering tsquery selectors and navigate thgouh matched nodes with arrow keys. finally select a node with enter. Usage:
 ```

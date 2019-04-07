@@ -8,11 +8,12 @@ import { getChildren, getKindName } from 'typescript-ast-util';
 import { AbstractPaginator } from '../base/basicPaginator';
 import { CustomBase, InquirerBase, KeyEvent } from '../base/types';
 import { nodeKinds } from './nodeKinds';
-import { ResultValue } from './types';
+import { ResultValue, NavigationOptions, Navigation } from './types';
+import { NavigationTreeLikeArrowNav } from './treeLikeArrowNavigation';
 const Base = require('inquirer/lib/prompts/base') as typeof CustomBase
 const observe = require('inquirer/lib/utils/events')
 
-export class AstExplorer<T extends ResultValue> extends Base implements InquirerBase<T> {
+export class AstExplorer<T extends ResultValue> extends Base implements InquirerBase<T>, NavigationOptions {
   currentInput: string
   sourceFileNative: ts.SourceFile
   selectedNodeIndex: number = 0
@@ -21,6 +22,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
   navigableNativeNodes: ts.Node[] = []
   lastSelectedNode: ts.Node
   code: string
+  navigation: Navigation
   paginator: AbstractPaginator
   selected: number = 0 //deprecate
   constructor(questions: Questions, rl: any, answers: any) {
@@ -36,6 +38,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     this.paginator = new AbstractPaginator(this.screen)
     this.navigableNativeNodes = getChildren(this.sourceFileNative)
     this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex]
+    this.navigation = new NavigationTreeLikeArrowNav()
     this.opt = {
       ...this.opt,
       validate(val: T) {
@@ -61,7 +64,7 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
         : this.kindNameSuggestions
     message += this.paginator.paginate(output, this.selected || 0, this.opt.pageSize)
     message += `Selector: ${this.currentInput}`
-    let bottomContent = `SyntaxKinds Autocomplete (TAB): \n${this.lastSelectedNode ?chalk.greenBright( `Selected "${getKindName(this.lastSelectedNode)}" at pos ${this.lastSelectedNode.pos}`) : ''} - [${
+    let bottomContent = `${this.lastSelectedNode ?chalk.greenBright( `Selected "${getKindName(this.lastSelectedNode)}" at pos ${this.lastSelectedNode.pos}`) : ''}\nSyntaxKind Autocomplete (TAB): \n - [${
       this.kindNameSuggestionIndex !== -1
         ? this.kindNameSuggestions
         : this.kindNameSuggestions
@@ -112,10 +115,12 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
   onKeypress(e?: KeyEvent) {
     let error: string | undefined
     if (e && e.key && e.key.name === 'left') {
-      this.onLeftKey()
+      this.navigation.onLeftKey(this)
+      this.onKeypress()
     } 
     else if (e && e.key && e.key.name === 'right') {
-      this.onRightKey()
+      this.navigation.onRightKey(this)
+      this.onKeypress()
     }
     else if (e && e.key && e.key.name === 'tab') {
       //On TAB we advance to next syntax kind suggestion if any. this.currentInput is reset to that value. or show error if no suggestion left
@@ -136,62 +141,67 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
   }
 
   onUpKey() {
-    if (!this.currentInput) {
-      this.navigableNativeNodes = [
-        ...getChildren(this.lastSelectedNode.parent&&this.lastSelectedNode.parent.parent ||this.lastSelectedNode.parent||this.lastSelectedNode)
-      ]
-    }
-    this.selectedNodeIndex =
-      this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
+    // if (!this.currentInput) {
+    //   this.navigableNativeNodes = [
+    //     ...getChildren(this.lastSelectedNode.parent&&this.lastSelectedNode.parent.parent ||this.lastSelectedNode.parent||this.lastSelectedNode)
+    //   ]
+    // }
+    // this.selectedNodeIndex =
+    //   this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
+    // this.onKeypress()
+    this.navigation.onUpKey(this)
     this.onKeypress()
   }
 
   onDownKey() {
-    if (!this.currentInput) {
-      this.navigableNativeNodes = [
-         ...getChildren(this.lastSelectedNode.parent).map(s=>getChildren(s)).flat()
-      ]
-      this.selectedNodeIndex = 0
-    }
-    this.selectedNodeIndex =
-      this.selectedNodeIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.selectedNodeIndex + 1
-    this.onKeypress()
-  }
-  onLeftKey() {
-    if (!this.currentInput) {
-      const children = getChildren(this.lastSelectedNode.parent)
-      if(children[0] ===this.lastSelectedNode){
-        this.navigableNativeNodes = [
-            ...getChildren(this.lastSelectedNode && this.lastSelectedNode.parent && this.lastSelectedNode.parent .parent||this.lastSelectedNode.parent||this.lastSelectedNode )
-          ]
-          this.selectedNodeIndex--
-      }
-      else {
-        this.selectedNodeIndex++
-        // this.selectedNodeIndex =
-        // this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
-      }
-    }
-    this.onKeypress()
-  }
+    // if (!this.currentInput) {
+    //   this.navigableNativeNodes = [
+    //      ...getChildren(this.lastSelectedNode.parent).map(s=>getChildren(s)).flat()
+    //   ]
+    //   this.selectedNodeIndex = 0
+    // }
+    // this.selectedNodeIndex =
+    //   this.selectedNodeIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.selectedNodeIndex + 1
+    // this.onKeypress()
 
-  onRightKey() {
-    if (!this.currentInput) {
-      const children = getChildren(this.lastSelectedNode.parent)
-      if(children[children.length-1] ===this.lastSelectedNode){
-        this.navigableNativeNodes = [
-            ...getChildren(this.lastSelectedNode)
-          ]
-          this.selectedNodeIndex=0
-      }
-      else {
-        this.selectedNodeIndex++
-        // this.kindNameSuggestionIndex =
-        //   this.kindNameSuggestionIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
-      }
-    }
+    this.navigation.onDownKey(this)
     this.onKeypress()
   }
+  // onLeftKey() {
+  //   if (!this.currentInput) {
+  //     const children = getChildren(this.lastSelectedNode.parent)
+  //     if(children[0] ===this.lastSelectedNode){
+  //       this.navigableNativeNodes = [
+  //           ...getChildren(this.lastSelectedNode && this.lastSelectedNode.parent && this.lastSelectedNode.parent .parent||this.lastSelectedNode.parent||this.lastSelectedNode )
+  //         ]
+  //         this.selectedNodeIndex--
+  //     }
+  //     else {
+  //       this.selectedNodeIndex++
+  //       // this.selectedNodeIndex =
+  //       // this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
+  //     }
+  //   }
+  //   this.onKeypress()
+  // }
+
+  // onRightKey() {
+  //   if (!this.currentInput) {
+  //     const children = getChildren(this.lastSelectedNode.parent)
+  //     if(children[children.length-1] ===this.lastSelectedNode){
+  //       this.navigableNativeNodes = [
+  //           ...getChildren(this.lastSelectedNode)
+  //         ]
+  //         this.selectedNodeIndex=0
+  //     }
+  //     else {
+  //       this.selectedNodeIndex++
+  //       // this.kindNameSuggestionIndex =
+  //       //   this.kindNameSuggestionIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
+  //     }
+  //   }
+  //   this.onKeypress()
+  // }
 
 
   // LIFE CYCLE and misc utilities
@@ -228,3 +238,5 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '))
   }
 }
+
+
