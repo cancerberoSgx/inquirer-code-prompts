@@ -32,7 +32,7 @@ export function buildExplorer(options: Options) {
       valign: 'middle',
       style: {
         bg: 'blue',
-        focus: focusStyle
+        // focus: focusStyle
       }
     })  
     viewCode.on('pressed', e => {
@@ -48,7 +48,7 @@ export function buildExplorer(options: Options) {
       valign: 'middle',
       style: {
         bg: 'blue',
-        focus: focusStyle
+        // focus: focusStyle
       }
     })
     optionsButton.on('pressed', e => {
@@ -59,7 +59,6 @@ export function buildExplorer(options: Options) {
     label: 'Files and Nodes Tree',
     style: {
       fg: 'green'
-      
     }
   }
   )
@@ -85,21 +84,20 @@ export function buildExplorer(options: Options) {
 
   let lastFocus = 0
   const f: blessed.Widgets.BlessedElement[] = [tree, table, viewCode, optionsButton]
-
   screen.key(['tab'], function (ch, key) {
     try {
       if (screen.focused) {
-        ;[f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
+        [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
           c.style = { ...c.style || {}, border: {} }
         })
       }
       lastFocus = lastFocus >= f.length - 1 ? 0 : lastFocus + 1
-      f[lastFocus].focus()
-
-        ;[f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
+      f[lastFocus].focus();
+        [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
           c.style = { ...c.style || {}, ...focusStyle }
         })
-
+        f[lastFocus].key
+screen.render()
     } catch (error) {
       console.log(error);
       throw error
