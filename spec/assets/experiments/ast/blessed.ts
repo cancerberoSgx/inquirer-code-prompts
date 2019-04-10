@@ -1,5 +1,5 @@
-
 import * as blessed from 'blessed';
+import * as contrib from 'blessed-contrib';
 
 export function isBlessedElement(n: any): n is blessed.Widgets.BlessedElement {
   return n && n.screenshot && n.enableDrag;
@@ -87,9 +87,9 @@ export function installFocusHandler(f: blessed.Widgets.BlessedElement[] ,  scree
 
 
 
-export function alert(screen: blessed.Widgets.Screen,s: string) {
-  if (!p) {
-    p = blessed.prompt({
+export function modal(screen: blessed.Widgets.Screen,s: string|blessed.Widgets.BlessedElement) {
+  if (!modalInstance) {
+    modalInstance = blessed.prompt({
       mouse: true,
       parent: screen,
       top: 'center',
@@ -102,18 +102,66 @@ export function alert(screen: blessed.Widgets.Screen,s: string) {
       border: 'line',
       hidden: true
     });
-    [p, ...p.children].forEach(c=>c.on('click', data=>p!.hide()))
+    [modalInstance, ...modalInstance.children].forEach(c=>c.on('click', data=>modalInstance!.hide()))
   }
-  p.setContent(s)
-  p.show()
+  if(typeof s === 'string'){
+    modalInstance.setContent(s)
+  }
+  else {
+    if(lastModalContent){
+      modalInstance.remove(lastModalContent)
+    }
+    lastModalContent = s
+    modalInstance.append(s) 
+  }
+  modalInstance.show()
+  screen.render()
 }
-let p: blessed.Widgets.PromptElement | undefined
-export function closeAlert(screen: blessed.Widgets.Screen){
-  if(p){
-    p.hide()
+let modalInstance: blessed.Widgets.PromptElement | undefined
+let lastModalContent: blessed.Widgets.BlessedElement | undefined
+
+export function closeModal(screen: blessed.Widgets.Screen){
+  if(modalInstance){
+    modalInstance.hide()
   }
   screen.render()
 }
-export function alertVisible(){
-  return p && p.visible
+export function isModalVisible(){
+  return modalInstance && modalInstance.visible
+}
+
+export function installExitKeys(screen: blessed.Widgets.Screen) {
+  screen.key(['escape', 'q', 'Q', 'C-c'], function (ch, key) {
+    if (isModalVisible()) {
+      closeModal(screen);
+    }
+    else {
+      return process.exit(0);
+    }
+  });
+}
+
+
+
+export function onTreeNodeFocus<T>(tree: contrib.Widgets.TreeElement ,fn: (selectedNode: T)=>void){
+tree.rows.key(['down', 'up'], k => {
+  // @ts-ignore
+  const selectedNode = tree.nodeLines && tree.rows && tree.nodeLines[tree.rows.getItemIndex(tree.rows.selected || 0)] as any
+  if (selectedNode) {
+   fn(selectedNode)
+  }
+})
+}
+
+
+export function onButtonClicked(b: blessed.Widgets.ButtonElement, fn: ()=>void) {
+  b.on('pressed', e => {
+    fn()
+  });
+  b.key(['enter', 'space'], e => {
+    fn()
+  });
+  b.on('click', e => {
+    fn()
+  });
 }
