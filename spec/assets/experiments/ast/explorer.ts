@@ -14,14 +14,12 @@ interface Options {
 export function buildExplorer(options: Options) {
   const { screen, project } = options
   const grid = new contrib.grid({ rows: 12, cols: 12, screen: screen })
-
   const focusStyle = {
     border: {
       type: 'line',
       fg: 'red'
     },
   }
-
   const viewCode: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button,    {
       mouse: true,
       clickable: true,
@@ -32,7 +30,6 @@ export function buildExplorer(options: Options) {
       valign: 'middle',
       style: {
         bg: 'blue',
-        // focus: focusStyle
       }
     })  
     viewCode.on('pressed', e => {
@@ -48,7 +45,6 @@ export function buildExplorer(options: Options) {
       valign: 'middle',
       style: {
         bg: 'blue',
-        // focus: focusStyle
       }
     })
     optionsButton.on('pressed', e => {
@@ -167,10 +163,6 @@ function updateTreeNoteStyles(tree: contrib.Widgets.TreeElement) {
 function test() {
   var screen = blessed.screen({ smartCSR: true });
   const project = new Project({ tsConfigFilePath: './tsconfig.json', addFilesFromTsConfig: true });
-  screen.key(['escape', 'q', 'C-c'], function (ch, key) {
-    return process.exit(0);
-  });
-
   try {
     buildExplorer({ project, screen });
   } catch (error) {

@@ -1,14 +1,14 @@
 import * as blessed from 'blessed';
 import * as contrib from 'blessed-contrib';
 import { pwd } from 'shelljs';
-import { Project } from 'ts-morph';
-import { GeneralNode, getGeneralNodeChildren, isDirectory, isNode } from 'ts-simple-ast-extra';
-import { isBlessedElement, visitDescendantElements } from './blessed';
-import { getGeneralNodeKindName, getGeneralNodeName, getGeneralNodePath } from './project';
+import { Project, SourceFile, Node } from 'ts-morph';
+import {isDirectory, isNode, selectNode, getChildrenForEachChild, getNodeName } from 'ts-simple-ast-extra';
+import { isBlessedElement, visitDescendantElements, installFocusHandler, alert, alertVisible, closeAlert } from './blessed';
 
 interface Options {
   project: Project
   screen: blessed.Widgets.Screen
+  sourceFile: SourceFile
 }
 
 export function buildCodeAst(options: Options) {
@@ -46,165 +46,99 @@ export function buildCodeAst(options: Options) {
       content: 'Options',
       align: 'center',
       valign: 'middle',
-      style: {
-        bg: 'blue',
-        // focus: focusStyle
-      }
+      // style: {
+      //   bg: 'blue',
+      //   // focus: focusStyle
+      // }
     })
     optionsButton.on('pressed', e => {
     console.log('asdasd');
   })
   const tree: contrib.Widgets.TreeElement = grid.set(0, 0, 12, 6, contrib.tree, {
     template: { lines: true },
-    label: 'Files and Nodes Tree',
-    style: {
-      fg: 'green'
-    }
-  }
+    label: options.sourceFile.getBaseName(),
+    keys: ['enter', 'space']
+    // style: {
+    //   fg: 'green'
+    // }
+  } as contrib.Widgets.TreeOptions
   )
   tree.rows.style = { ...tree.rows.style || {}, ...focusStyle }
+// tree.rows.key(['down'])
 
-let p: blessed.Widgets.PromptElement | undefined
-function alert(s: string) {
-  if (!p) {
-    p = blessed.prompt({
-      mouse: true,
-      parent: screen,
-      top: 'center',
-      left: 'center',
-      height: 'shrink',
-      width: 'shrink',
-      keys: true,
-      vi: true,
-      tags: true,
-      border: 'line',
-      hidden: true
-    });
-    [p, ...p.children].forEach(c=>c.on('click', data=>p!.hide()))
-  }
-  p.setContent(s)
-  p.show()
-}
-function closeAlert(){
-  if(p){
-    p.hide()
-  }
-  screen.render()
-}
-function alertVisible(){
-  return p && p.visible
-}
+
 
 const editor: blessed.Widgets.TextboxElement = grid.set(1, 6, 11, 6, blessed.textbox, {
-  // alwaysScroll: true,
   scrollable: true,
   clickable: true,
   focusable: true, 
-  // hoverText: 'hshshs',
   mouse: true,
-  scrollbar: {
-    ch: ' ',
-    track: {
-      bg: 'cyan'
-    },
-    style: {
-      inverse: true
-    }
-  },
-  style: {
-    item: {
-      hover: {
-        bg: 'blue'
-      }
-    },
-    selected: {
-      bg: 'blue',
-      bold: true
-    }
-  },
-  keyable: true,
+  // scrollbar: {
+  //   ch: ' ',
+  //   track: {
+  //     bg: 'cyan'
+  //   },
+  //   style: {
+  //     inverse: true
+  //   }
+  // },
+  // style: {
+  //   item: {
+  //     hover: {
+  //       bg: 'blue'
+  //     }
+  //   },
+  //   selected: {
+  //     bg: 'blue',
+  //     bold: true
+  //   }
+  // },
+  // keyable: true,
 
-  top: 0,
-  left: 0, width: '100%', height: '100%',
+  // top: 0,
+  // left: 0
+  // , width: '100%', height: '100%',
 } as blessed.Widgets.TextboxOptions)
 
 editor.on('click', function (data:any) {
-  alert( JSON.stringify(data) + '  ' + JSON.stringify(editor.position))
+  alert( screen, JSON.stringify(data) + '  ' + JSON.stringify(editor.position))
   screen.render();
 });
+// let cursor=0
+// let selectedNode:Node = options.sourceFile
+// editor.key('down', function (data:any) {
+//   let text = editor.getText()
+// text = text.substring(0, selectedNode.getFullStart()) + require('ansi-escape-sequences').format( text.substring(selectedNode.getFullStart(), selectedNode.getEnd()),['blue']) + text.substring( selectedNode.getEnd()) 
+//   editor.setContent(text)
 
-
-let cursor=0
-editor.key('down', function (data:any) {
-  console.log('DSLKJLkjlkj');
-  
-  //   alert( JSON.stringify(data) + '  ' + JSON.stringify(editor.position))
-  //   screen.render();
-  cursor++
-  const tokens = editor.getText().split(/\s+/gm)
-  tokens[cursor] =require('ansi-escape-sequences').format( tokens[cursor],['blue'])
-  editor.setText(tokens.join(' '))
-  })
-  
-
-  // table.setData({ headers: ['Property', 'Value'], data: [[]] })
+//   // selectedNode.getPos
+//   // const tokens = editor.getText().split(/\s+/gm)
+//   // tokens[cursor] =require('ansi-escape-sequences').format( tokens[cursor],['blue']) 
+//   // cursor = cursor>=tokens.length-1 ? 0 : cursor+1
+//   // editor.setContent(tokens.join(' '))
+//   screen.render()
+//   })
 
   screen.key(['escape', 'q', 'Q', 'C-c'], function (ch, key) {
     if(alertVisible()){
-      closeAlert()
+      closeAlert(screen)
     }
     else {
       return process.exit(0);
     }
   });
 
-  let lastFocus = 0
-  const f: blessed.Widgets.BlessedElement[] = [tree, editor, viewCode, optionsButton]
-  screen.key(['tab'], function (ch, key) {
-    try {
-      if (screen.focused) {
-        [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
-          c.style = { ...c.style || {}, border: {} }
-        })
-      }
-      lastFocus = lastFocus >= f.length - 1 ? 0 : lastFocus + 1
-      f[lastFocus].focus();
-        [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
-          c.style = { ...c.style || {}, ...focusStyle }
-        })
-        f[lastFocus].key
-screen.render()
-    } catch (error) {
-      console.log(error);
-      throw error
-    }
-  })
+  installFocusHandler([tree,editor, viewCode, optionsButton], screen, focusStyle);
 
-  tree.focus(); 
-  [tree, tree.parent, ...tree.children || []].filter(isBlessedElement).forEach(c => {
-      c.style = { ...c.style || {}, ...focusStyle }
-    })
   screen.render()
-
-  const explorer = { extended: true, ...buildTreeNode(project.getRootDirectories()[0]) }
-
+  const explorer = { extended: true, ...buildTreeNode(options.sourceFile)}
   // @ts-ignore
   tree.setData(explorer);
-  updateTreeNoteStyles(tree);
   tree.on('select', function (n: TreeNode) {
     try {
-      editor.setText(isNode(n.astNode) ? n.astNode.getText() : '')
-      // if (n.astNode) {
-        // const data = [
-        //   ['Kind', getGeneralNodeKindName(n.astNode) || ''],
-        //   ['Name', getGeneralNodeName(n.astNode) || ''],
-        //   ['Position', isNode(n.astNode) ? n.astNode.getPos() + '' : ''],
-        //   ['Path', getGeneralNodePath(n.astNode, pwd()) || ''],
-        //   ['Text', isNode(n.astNode) ? n.astNode.getText().replace(/\n/gm, '\\n') || '' : '']
-        // ]
-        // table.setData({ headers: ['Property', 'Value'], data });
-      // }
-      updateTreeNoteStyles(tree);
+      let text = options.sourceFile.getFullText()
+      text = text.substring(0, n.astNode.getFullStart()) + require('ansi-escape-sequences').format( text.substring(n.astNode.getFullStart(), n.astNode.getEnd()),['blue']) + text.substring( n.astNode.getEnd()) 
+        editor.setContent(text)
       screen.render()
     } catch (error) {
       console.log(error);
@@ -213,13 +147,13 @@ screen.render()
   });
 }
 interface TreeNode {
-  astNode: GeneralNode
+  astNode: Node
 }
 
-function buildTreeNode(n: GeneralNode) {
+function buildTreeNode(n: Node) {
   const children: any = {}
-  getGeneralNodeChildren(n).forEach(c => {
-    const name = (getGeneralNodeName(c) || getGeneralNodeKindName(c)) + (isDirectory(c) ? '/' : '')
+  getChildrenForEachChild(n).forEach(c => {
+    const name =c.getKindName() + (getNodeName(c) ? ` (${getNodeName(c)})` : '')
     children[name] = buildTreeNode(c)
   })
   return {
@@ -227,31 +161,16 @@ function buildTreeNode(n: GeneralNode) {
     astNode: n,
   }
 }
-
-function updateTreeNoteStyles(tree: contrib.Widgets.TreeElement) {
-  visitDescendantElements(tree, e => {
-    const content = e.getContent();
-    if (content.includes('/ [') || content.trim().endsWith('/') || content.includes('.')) {
-      e.style.fg = 'yellow';
-    }
-    else {
-      e.style.fg = 'white';
-    }
-    return false
-  });
-}
-
-
-
+ 
 function test() {
   var screen = blessed.screen({ smartCSR: true });
-  const project = new Project({ tsConfigFilePath: './tsconfig.json', addFilesFromTsConfig: true });
-  // screen.key(['escape', 'q', 'C-c'], function (ch, key) {
-  //   return process.exit(0);
-  // });
-
+  const project = new Project();
+  const f = project.createSourceFile('foo.ts', `
+const a = 1
+export function fffff(a: string){}
+  `)
   try {
-    buildCodeAst({ project, screen });
+    buildCodeAst({ project, sourceFile: f, screen });
   } catch (error) {
     console.log(error);
 
