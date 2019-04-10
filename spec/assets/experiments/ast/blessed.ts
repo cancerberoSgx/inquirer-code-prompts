@@ -1,5 +1,6 @@
 import * as blessed from 'blessed';
 import * as contrib from 'blessed-contrib';
+import { focusStyle } from './common';
 
 export function isBlessedElement(n: any): n is blessed.Widgets.BlessedElement {
   return n && n.screenshot && n.enableDrag;
@@ -53,7 +54,7 @@ export function isFocused(screen: blessed.Widgets.Screen, el: blessed.Widgets.Bl
 
 
 let lastFocus = 0;
-export function installFocusHandler(f: blessed.Widgets.BlessedElement[] ,  screen: blessed.Widgets.Screen, focusStyle: { border: { type: string; fg: string; }; }) {  
+export function installFocusHandler(f: blessed.Widgets.BlessedElement[] ,  screen: blessed.Widgets.Screen ) {  
   screen.key(['tab'], function (ch, key) {
     try {
       if (screen.focused) {
