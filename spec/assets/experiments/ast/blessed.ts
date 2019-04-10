@@ -1,9 +1,10 @@
 
 import * as blessed from 'blessed';
 
-function isBlessedElement(n: any): n is blessed.Widgets.BlessedElement {
+export function isBlessedElement(n: any): n is blessed.Widgets.BlessedElement {
   return n && n.screenshot && n.enableDrag;
 }
+
 function updateNodeLines(node: blessed.Widgets.BlessedElement, fn: (l: string) => string) {
   node.getLines().forEach((l, i) => {
     node.setLine(i, fn(l));
@@ -14,19 +15,36 @@ function updateNodeLines(node: blessed.Widgets.BlessedElement, fn: (l: string) =
     }
   });
 }
-function updateDescendantNodes(node: blessed.Widgets.BlessedElement, fn: (l: blessed.Widgets.Node) => string) {
+function visitDescendantNodes(node: blessed.Widgets.BlessedElement, fn: (l: blessed.Widgets.Node) => boolean) {
+  let stop : boolean = false
   node.children.forEach(c => {
-    fn(c);
+    if(stop){
+      return
+    }
+    if(fn(c)){
+      stop=true
+      return
+     }
     if (isBlessedElement(c)) {
-      updateDescendantNodes(c, fn);
+      visitDescendantNodes(c, fn);
     }
   });
 }
-export function updateDescendantElements(node: blessed.Widgets.BlessedElement, fn: (l: blessed.Widgets.BlessedElement) => void) {
-  node.children.forEach(c => {
-    if (isBlessedElement(c)) {
-      fn(c);
-      updateDescendantElements(c, fn);
-    }
-  });
+export function visitDescendantElements(node: blessed.Widgets.BlessedElement, fn: (l: blessed.Widgets.BlessedElement) => boolean) {
+  return visitDescendantNodes(node, n=>isBlessedElement(n) ? fn(n) : false)
+}
+export function findDescendantNode(node:blessed.Widgets.BlessedElement, fn: (l: blessed.Widgets.Node) => boolean ) {
+  var found: blessed.Widgets.Node|undefined
+  visitDescendantNodes(node, c=>{
+if(fn(c)){
+  found = c
+  return true
+}
+return false
+  })
+  return found
+}
+
+export function isFocused(screen: blessed.Widgets.Screen, el: blessed.Widgets.BlessedElement) {
+  return el === screen.focused || el.hasDescendant(screen.focused)
 }
