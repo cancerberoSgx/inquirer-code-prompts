@@ -3,7 +3,7 @@ import * as contrib from 'blessed-contrib';
 import { pwd } from 'shelljs';
 import { Project } from 'ts-morph';
 import { GeneralNode, getGeneralNodeChildren, isDirectory, isNode } from 'ts-simple-ast-extra';
-import { isBlessedElement, visitDescendantElements } from './blessed';
+import { isBlessedElement, visitDescendantElements, installExitKeys, onButtonClicked, onTreeNodeFocus, installFocusHandler } from './blessed';
 import { getGeneralNodeKindName, getGeneralNodeName, getGeneralNodePath } from './project';
 
 interface Options {
@@ -20,7 +20,7 @@ export function buildExplorer(options: Options) {
       fg: 'red'
     },
   }
-  const viewCode: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button,    {
+  const viewCodeButton: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button,    {
       mouse: true,
       clickable: true,
       keys: true,
@@ -32,9 +32,9 @@ export function buildExplorer(options: Options) {
         bg: 'blue',
       }
     })  
-    viewCode.on('pressed', e => {
-      console.log('asdasd');
-    })
+    onButtonClicked(viewCodeButton, () => {
+    console.log('asdasd');
+  })
   const optionsButton: blessed.Widgets.ButtonElement = grid.set(0, 9, 1, 3, blessed.button,    {
       mouse: true,
       clickable: true,
@@ -42,23 +42,21 @@ export function buildExplorer(options: Options) {
       name: 'options',
       content: 'Options',
       align: 'center',
-      valign: 'middle',
-      style: {
-        bg: 'blue',
-      }
+      valign: 'middle'
     })
-    optionsButton.on('pressed', e => {
+    onButtonClicked(optionsButton, () => {
     console.log('asdasd');
   })
   const tree: contrib.Widgets.TreeElement = grid.set(0, 0, 12, 6, contrib.tree, {
     template: { lines: true },
-    label: 'Files and Nodes Tree',
-    style: {
-      fg: 'green'
-    }
+    label: 'Files and Nodes Tree'
   }
   )
   tree.rows.style = { ...tree.rows.style || {}, ...focusStyle }
+  
+  onTreeNodeFocus(tree, selectTreeNode)
+
+
   const table: contrib.Widgets.TableElement = grid.set(1, 6, 11, 6, contrib.table,
     {
       keys: true,
@@ -67,69 +65,69 @@ export function buildExplorer(options: Options) {
       style: {
         fg: 'green'}
     })
-  table.children.filter(isBlessedElement).forEach(c => c.key('enter', function (ch, key) {
+  // table.children.filter(isBlessedElement).forEach(c => c.key('enter', function (ch, key) {
     // console.log(      table.children.filter(isBlessedElement).map(c=>c.getText()));
-  })
-  )
+  // })
+  // )
 
   table.setData({ headers: ['Property', 'Value'], data: [[]] })
 
-  screen.key(['escape', 'q', 'Q', 'C-c'], function (ch, key) {
-    return process.exit(0);
-  });
+  installExitKeys(screen)
 
-  let lastFocus = 0
-  const f: blessed.Widgets.BlessedElement[] = [tree, table, viewCode, optionsButton]
-  screen.key(['tab'], function (ch, key) {
-    try {
-      if (screen.focused) {
-        [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
-          c.style = { ...c.style || {}, border: {} }
-        })
-      }
-      lastFocus = lastFocus >= f.length - 1 ? 0 : lastFocus + 1
-      f[lastFocus].focus();
-        [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
-          c.style = { ...c.style || {}, ...focusStyle }
-        })
-        f[lastFocus].key
-screen.render()
-    } catch (error) {
-      console.log(error);
-      throw error
-    }
-  })
+//   let lastFocus = 0
+//   const f: blessed.Widgets.BlessedElement[] = [tree, table, viewCodeButton, optionsButton]
+//   screen.key(['tab'], function (ch, key) {
+//     try {
+//       if (screen.focused) {
+//         [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
+//           c.style = { ...c.style || {}, border: {} }
+//         })
+//       }
+//       lastFocus = lastFocus >= f.length - 1 ? 0 : lastFocus + 1
+//       f[lastFocus].focus();
+//         [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
+//           c.style = { ...c.style || {}, ...focusStyle }
+//         })
+//         f[lastFocus].key
+// screen.render()
+//     } catch (error) {
+//       console.log(error);
+//       throw error
+//     }
+//   })
 
-  tree.focus(); 
-  [tree, tree.parent, ...tree.children || []].filter(isBlessedElement).forEach(c => {
-      c.style = { ...c.style || {}, ...focusStyle }
-    })
+  // tree.focus(); 
+  // [tree, tree.parent, ...tree.children || []].filter(isBlessedElement).forEach(c => {
+  //     c.style = { ...c.style || {}, ...focusStyle }
+  //   })
+  installFocusHandler( [tree, table, viewCodeButton, optionsButton], screen, focusStyle)
   screen.render()
 
-  const explorer = { extended: true, ...buildTreeNode(project.getRootDirectories()[0]) }
+  const rootNode = { extended: true, ...buildTreeNode(project.getRootDirectories()[0]) }
 
   // @ts-ignore
-  tree.setData(explorer);
+  tree.setData(rootNode);
+
   updateTreeNoteStyles(tree);
+
   tree.on('select', function (n: TreeNode) {
-    try {
-      if (n.astNode) {
-        const data = [
-          ['Kind', getGeneralNodeKindName(n.astNode) || ''],
-          ['Name', getGeneralNodeName(n.astNode) || ''],
-          ['Position', isNode(n.astNode) ? n.astNode.getPos() + '' : ''],
-          ['Path', getGeneralNodePath(n.astNode, pwd()) || ''],
-          ['Text', isNode(n.astNode) ? n.astNode.getText().replace(/\n/gm, '\\n') || '' : '']
-        ]
-        table.setData({ headers: ['Property', 'Value'], data });
-      }
-      updateTreeNoteStyles(tree);
-      screen.render()
-    } catch (error) {
-      console.log(error);
-      throw error
-    }
+      selectTreeNode(n);
   });
+
+  function selectTreeNode(n: TreeNode) {
+    if (n.astNode) {
+      const data = [
+        ['Kind', getGeneralNodeKindName(n.astNode) || ''],
+        ['Name', getGeneralNodeName(n.astNode) || ''],
+        ['Position', isNode(n.astNode) ? n.astNode.getPos() + '' : ''],
+        ['Path', getGeneralNodePath(n.astNode, pwd()) || ''],
+        ['Text', isNode(n.astNode) ? n.astNode.getText().replace(/\n/gm, '\\n') || '' : '']
+      ];
+      table.setData({ headers: ['Property', 'Value'], data });
+    }
+    updateTreeNoteStyles(tree);
+    screen.render();
+  }
 }
 interface TreeNode {
   astNode: GeneralNode
@@ -163,12 +161,7 @@ function updateTreeNoteStyles(tree: contrib.Widgets.TreeElement) {
 function test() {
   var screen = blessed.screen({ smartCSR: true });
   const project = new Project({ tsConfigFilePath: './tsconfig.json', addFilesFromTsConfig: true });
-  try {
     buildExplorer({ project, screen });
-  } catch (error) {
-    console.log(error);
-
-  }
   screen.render()
 }
 test()

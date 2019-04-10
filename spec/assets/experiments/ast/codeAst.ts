@@ -23,7 +23,7 @@ export function buildCodeAst(options: Options) {
     },
   }
 
-  const viewCode: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button, {
+  const viewCodeNButton: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button, {
     mouse: true,
     clickable: true,
     keys: true,
@@ -32,9 +32,9 @@ export function buildCodeAst(options: Options) {
     align: 'center',
     valign: 'middle',
   })
-  viewCode.on('pressed', e => {
-    console.log('asdasd');
-  })
+  onButtonClicked(viewCodeNButton, ()=>{
+    modal(screen, 'Some options')
+  });
   const optionsButton: blessed.Widgets.ButtonElement = grid.set(0, 9, 1, 3, blessed.button, {
     mouse: true,
     clickable: true,
@@ -83,7 +83,7 @@ export function buildCodeAst(options: Options) {
 
   installExitKeys(screen);
 
-  installFocusHandler([tree, editor, viewCode, optionsButton], screen, focusStyle);
+  installFocusHandler([tree, editor, viewCodeNButton, optionsButton], screen, focusStyle);
 
   screen.render()
 
@@ -98,8 +98,10 @@ export function buildCodeAst(options: Options) {
     let text = options.sourceFile.getFullText();
     text = text.substring(0, n.astNode.getFullStart()) +
       require('ansi-escape-sequences').format(text.substring(n.astNode.getFullStart(), n.astNode.getEnd()), ['blue']) +
-      text.substring(n.astNode.getEnd()
-      )
+      text.substring(n.astNode.getEnd())
+      if(n.astNode.getStartLineNumber()!==undefined){
+        editor.setScroll(Math.max(0, n.astNode.getStartLineNumber()-3))//? n.astNode.getStartLineNumber()-1 : n.astNode.getStartLineNumber())
+      }
     editor.setContent(text);
     screen.render();
   }
@@ -127,13 +129,8 @@ function buildTreeNode(n: Node) {
 function test() {
   var screen = blessed.screen({ smartCSR: true });
   const project = new Project();
-  const f = project.createSourceFile('foo.ts', longText())
-  // try {
+  const f = project.createSourceFile('foo.ts', longText()+'\nexport const ggg = 1\n')
     buildCodeAst({ project, sourceFile: f, screen });
-  // } catch (error) {
-  //   console.log(error);
-
-  // }
   screen.render()
 }
 test()
