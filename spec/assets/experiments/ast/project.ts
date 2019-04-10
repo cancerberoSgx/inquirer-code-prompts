@@ -1,11 +1,36 @@
-import { GeneralNode, isDirectory, isSourceFile, getName } from 'ts-simple-ast-extra';
+import { GeneralNode, isDirectory, isSourceFile, getChildrenForEachChild } from 'ts-simple-ast-extra';
+import Project, { TypeGuards, Node } from 'ts-morph';
 
 // TODO: move to -extra
 export function getGeneralNodeKindName(c: GeneralNode) {
   return isDirectory(c) ? 'Directory' : c.getKindName()
 }
 export function getGeneralNodeName(c: GeneralNode) {
-  return isDirectory(c) ? c.getBaseName() : isSourceFile(c) ? c.getBaseName() : getName(c) || c.getKindName()
+  try {
+    return isDirectory(c) ? c.getBaseName() : isSourceFile(c) ? c.getBaseName()  : c ? ( getName(c) || c.getKindName()||'') : ''
+  } catch (error) {
+    console.log(error);
+    
+  return  ''
+  }
+}
+/**
+ *  Try to call n.getName or returns empty string if there is no such method
+ */
+export function getName(n: Node) {
+try {
+  return TypeGuards.hasName(n) ? n.getName() : TypeGuards.isIdentifier(n) ? n.getText() : undefined
+} catch (error) {
+  return undefined
+}
+}
+/**
+ * Returns immediate children. In case of Nodes, children are obtained using forEachChild instead of getChildren method
+ */
+export function getGeneralNodeChildren(f: GeneralNode, project: Project): GeneralNode[] {
+  return isDirectory(f)
+    ? (f.getDirectories().filter(d=>project.getDirectory(d.getPath())) as GeneralNode[]).concat(f.getSourceFiles() as GeneralNode[])
+    : getChildrenForEachChild(f)
 }
 
 // import { join, relative } from 'path'
