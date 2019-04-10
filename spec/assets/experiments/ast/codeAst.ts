@@ -1,19 +1,19 @@
 import * as blessed from 'blessed';
 import * as contrib from 'blessed-contrib';
-import { pwd } from 'shelljs';
-import { Project, SourceFile, Node } from 'ts-morph';
-import { isDirectory, isNode, selectNode, getChildrenForEachChild, getNodeName } from 'ts-simple-ast-extra';
-import { isBlessedElement, visitDescendantElements, installFocusHandler, modal, isModalVisible, closeModal, installExitKeys, onTreeNodeFocus, onButtonClicked } from './blessed';
-import { longText } from '../../less/text';
+import { Node, Project, SourceFile } from 'ts-morph';
+import { getChildrenForEachChild, getNodeName } from 'ts-simple-ast-extra';
+import { installExitKeys, installFocusHandler, modal, onButtonClicked, onTreeNodeFocus } from './blessed';
+import { buildExplorer } from './explorer';
 
 interface Options {
   project: Project
   screen: blessed.Widgets.Screen
-  sourceFile: SourceFile
+  // sourceFile: SourceFile
+  node: Node
 }
 
 export function buildCodeAst(options: Options) {
-  const { screen, project } = options
+  let { screen, project, node } = options
   const grid = new contrib.grid({ rows: 12, cols: 12, screen: screen })
 
   const focusStyle = {
@@ -23,18 +23,25 @@ export function buildCodeAst(options: Options) {
     },
   }
 
-  const viewCodeNButton: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button, {
+  const fileExplorerButton: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button, {
     mouse: true,
     clickable: true,
     keys: true,
-    name: 'ViewCode',
-    content: 'View Code',
+    name: 'fileExplorer',
+    content: 'File Explorer',
     align: 'center',
     valign: 'middle',
+    padding: 0, margin: 0,
   })
-  onButtonClicked(viewCodeNButton, ()=>{
-    modal(screen, 'Some options')
+  onButtonClicked(fileExplorerButton, () => {
+    screen.clearRegion(0, parseInt(screen.width + ''), 0, parseInt(screen.height + ''))
+    screen.render()
+    screen.destroy()
+    screen = blessed.screen({ smartCSR: true });
+    buildExplorer({ screen, project })
+    screen.render()
   });
+
   const optionsButton: blessed.Widgets.ButtonElement = grid.set(0, 9, 1, 3, blessed.button, {
     mouse: true,
     clickable: true,
@@ -43,15 +50,16 @@ export function buildCodeAst(options: Options) {
     content: 'Options',
     align: 'center',
     valign: 'middle',
+    padding: 0, margin: 0,
   })
 
-  onButtonClicked(optionsButton, ()=>{
+  onButtonClicked(optionsButton, () => {
     modal(screen, 'Some options')
   });
 
   const tree: contrib.Widgets.TreeElement = grid.set(0, 0, 12, 6, contrib.tree, {
     template: { lines: true },
-    label: options.sourceFile.getBaseName(),
+    label: options.node.getSourceFile().getBaseName(),
   } as contrib.Widgets.TreeOptions
   )
   tree.rows.style = { ...tree.rows.style || {}, ...focusStyle }
@@ -62,18 +70,18 @@ export function buildCodeAst(options: Options) {
     alwaysScroll: true,
     scrollable: true,
     clickable: true,
-    focusable: true, 
-    hoverText: 'hshshs',
+    focusable: true,
+    // hoverText: 'hshshs',
     mouse: true,
-    scrollbar: {
-      ch: ' ',
-      track: {
-        bg: 'cyan'
-      },
-      style: {
-        inverse: true
-      }
-    },
+    // scrollbar: {
+    //   ch: ' ',
+    //   track: {
+    //     bg: 'cyan'
+    //   },
+    //   style: {
+    //     inverse: true
+    //   }
+    // },
   } as blessed.Widgets.ScrollableTextOptions)
 
   // editor.on('click', function (data: any) {
@@ -83,11 +91,11 @@ export function buildCodeAst(options: Options) {
 
   installExitKeys(screen);
 
-  installFocusHandler([tree, editor, viewCodeNButton, optionsButton], screen, focusStyle);
+  installFocusHandler([tree, editor, fileExplorerButton, optionsButton], screen, focusStyle);
 
   screen.render()
 
-  const rootNodew  = { extended: true, ...buildTreeNode(options.sourceFile) }
+  const rootNodew = { extended: true, ...buildTreeNode(options.node.getSourceFile()) }
   // @ts-ignore
   tree.setData(rootNodew);
   tree.on('select', function (n: TreeNode) {
@@ -95,13 +103,13 @@ export function buildCodeAst(options: Options) {
   });
 
   function selectTreeNode(n: TreeNode) {
-    let text = options.sourceFile.getFullText();
+    let text = options.node.getSourceFile().getFullText();
     text = text.substring(0, n.astNode.getFullStart()) +
       require('ansi-escape-sequences').format(text.substring(n.astNode.getFullStart(), n.astNode.getEnd()), ['blue']) +
       text.substring(n.astNode.getEnd())
-      if(n.astNode.getStartLineNumber()!==undefined){
-        editor.setScroll(Math.max(0, n.astNode.getStartLineNumber()-3))//? n.astNode.getStartLineNumber()-1 : n.astNode.getStartLineNumber())
-      }
+    if (n.astNode.getStartLineNumber() !== undefined) {
+      editor.setScroll(Math.max(0, n.astNode.getStartLineNumber() - 3))//? n.astNode.getStartLineNumber()-1 : n.astNode.getStartLineNumber())
+    }
     editor.setContent(text);
     screen.render();
   }
@@ -112,13 +120,12 @@ interface TreeNode {
 }
 
 
-
-
 function buildTreeNode(n: Node) {
   const children: any = {}
+  let counter = 0
   getChildrenForEachChild(n).forEach(c => {
     const name = c.getKindName() + (getNodeName(c) ? ` (${getNodeName(c)})` : '')
-    children[name] = buildTreeNode(c)
+    children[children[name] ? name + ` (${counter++})` : name] = buildTreeNode(c)
   })
   return {
     children,
@@ -126,11 +133,3 @@ function buildTreeNode(n: Node) {
   }
 }
 
-function test() {
-  var screen = blessed.screen({ smartCSR: true });
-  const project = new Project();
-  const f = project.createSourceFile('foo.ts', longText()+'\nexport const ggg = 1\n')
-    buildCodeAst({ project, sourceFile: f, screen });
-  screen.render()
-}
-test()

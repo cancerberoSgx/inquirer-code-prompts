@@ -1,10 +1,11 @@
 import * as blessed from 'blessed';
 import * as contrib from 'blessed-contrib';
 import { pwd } from 'shelljs';
-import { Project } from 'ts-morph';
+import { Project, Node } from 'ts-morph';
 import { GeneralNode, getGeneralNodeChildren, isDirectory, isNode } from 'ts-simple-ast-extra';
 import { isBlessedElement, visitDescendantElements, installExitKeys, onButtonClicked, onTreeNodeFocus, installFocusHandler } from './blessed';
 import { getGeneralNodeKindName, getGeneralNodeName, getGeneralNodePath } from './project';
+import { buildCodeAst } from './codeAst';
 
 interface Options {
   project: Project
@@ -12,7 +13,7 @@ interface Options {
 }
 
 export function buildExplorer(options: Options) {
-  const { screen, project } = options
+  let { screen, project } = options
   const grid = new contrib.grid({ rows: 12, cols: 12, screen: screen })
   const focusStyle = {
     border: {
@@ -20,31 +21,38 @@ export function buildExplorer(options: Options) {
       fg: 'red'
     },
   }
-  const viewCodeButton: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button,    {
-      mouse: true,
-      clickable: true,
-      keys: true,
-      name: 'ViewCode',
-      content: 'View Code',
-      align: 'center',
-      valign: 'middle',
-      style: {
-        bg: 'blue',
-      }
-    })  
-    onButtonClicked(viewCodeButton, () => {
-    console.log('asdasd');
+  const viewCodeButton: blessed.Widgets.ButtonElement = grid.set(0, 6, 1, 3, blessed.button, {
+    mouse: true,
+    clickable: true,
+    keys: true,
+    name: 'ViewCode',
+    content: 'View Code',
+    align: 'center',
+    valign: 'middle',
+    style: {
+      bg: 'blue',
+    }
   })
-  const optionsButton: blessed.Widgets.ButtonElement = grid.set(0, 9, 1, 3, blessed.button,    {
-      mouse: true,
-      clickable: true,
-      keys: true,
-      name: 'options',
-      content: 'Options',
-      align: 'center',
-      valign: 'middle'
-    })
-    onButtonClicked(optionsButton, () => {
+  onButtonClicked(viewCodeButton, () => {
+    if (lastSelectedNode) {
+      screen.clearRegion(0, parseInt(screen.width + ''), 0, parseInt(screen.height + ''))
+      screen.render()
+      screen.destroy()
+      screen = blessed.screen({ smartCSR: true });
+      buildCodeAst({ screen,node:lastSelectedNode, project })
+      screen.render()
+    }
+  })
+  const optionsButton: blessed.Widgets.ButtonElement = grid.set(0, 9, 1, 3, blessed.button, {
+    mouse: true,
+    clickable: true,
+    keys: true,
+    name: 'options',
+    content: 'Options',
+    align: 'center',
+    valign: 'middle'
+  })
+  onButtonClicked(optionsButton, () => {
     console.log('asdasd');
   })
   const tree: contrib.Widgets.TreeElement = grid.set(0, 0, 12, 6, contrib.tree, {
@@ -53,7 +61,7 @@ export function buildExplorer(options: Options) {
   }
   )
   tree.rows.style = { ...tree.rows.style || {}, ...focusStyle }
-  
+
   onTreeNodeFocus(tree, selectTreeNode)
 
 
@@ -63,44 +71,18 @@ export function buildExplorer(options: Options) {
       label: 'Details',
       columnWidth: [8, 200],
       style: {
-        fg: 'green'}
+        fg: 'green'
+      }
     })
   // table.children.filter(isBlessedElement).forEach(c => c.key('enter', function (ch, key) {
-    // console.log(      table.children.filter(isBlessedElement).map(c=>c.getText()));
-  // })
-  // )
+  //   console.log(      table.children.filter(isBlessedElement).map(c=>c.getText()));
+  // }))
 
   table.setData({ headers: ['Property', 'Value'], data: [[]] })
 
   installExitKeys(screen)
 
-//   let lastFocus = 0
-//   const f: blessed.Widgets.BlessedElement[] = [tree, table, viewCodeButton, optionsButton]
-//   screen.key(['tab'], function (ch, key) {
-//     try {
-//       if (screen.focused) {
-//         [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
-//           c.style = { ...c.style || {}, border: {} }
-//         })
-//       }
-//       lastFocus = lastFocus >= f.length - 1 ? 0 : lastFocus + 1
-//       f[lastFocus].focus();
-//         [f[lastFocus], f[lastFocus].parent, ...f[lastFocus].children || []].filter(isBlessedElement).forEach(c => {
-//           c.style = { ...c.style || {}, ...focusStyle }
-//         })
-//         f[lastFocus].key
-// screen.render()
-//     } catch (error) {
-//       console.log(error);
-//       throw error
-//     }
-//   })
-
-  // tree.focus(); 
-  // [tree, tree.parent, ...tree.children || []].filter(isBlessedElement).forEach(c => {
-  //     c.style = { ...c.style || {}, ...focusStyle }
-  //   })
-  installFocusHandler( [tree, table, viewCodeButton, optionsButton], screen, focusStyle)
+  installFocusHandler([tree, table, viewCodeButton, optionsButton], screen, focusStyle)
   screen.render()
 
   const rootNode = { extended: true, ...buildTreeNode(project.getRootDirectories()[0]) }
@@ -111,11 +93,14 @@ export function buildExplorer(options: Options) {
   updateTreeNoteStyles(tree);
 
   tree.on('select', function (n: TreeNode) {
-      selectTreeNode(n);
+    selectTreeNode(n);
   });
 
   function selectTreeNode(n: TreeNode) {
     if (n.astNode) {
+      if (isNode(n.astNode)) {
+        lastSelectedNode = n.astNode
+      }
       const data = [
         ['Kind', getGeneralNodeKindName(n.astNode) || ''],
         ['Name', getGeneralNodeName(n.astNode) || ''],
@@ -126,8 +111,10 @@ export function buildExplorer(options: Options) {
       table.setData({ headers: ['Property', 'Value'], data });
     }
     updateTreeNoteStyles(tree);
+
     screen.render();
   }
+  let lastSelectedNode: Node | undefined
 }
 interface TreeNode {
   astNode: GeneralNode
@@ -135,9 +122,10 @@ interface TreeNode {
 
 function buildTreeNode(n: GeneralNode) {
   const children: any = {}
+  let counter=0
   getGeneralNodeChildren(n).forEach(c => {
     const name = (getGeneralNodeName(c) || getGeneralNodeKindName(c)) + (isDirectory(c) ? '/' : '')
-    children[name] = buildTreeNode(c)
+    children[children[name] ? name + ` (${counter++})` : name]  = buildTreeNode(c)
   })
   return {
     children,
@@ -158,10 +146,3 @@ function updateTreeNoteStyles(tree: contrib.Widgets.TreeElement) {
   });
 }
 
-function test() {
-  var screen = blessed.screen({ smartCSR: true });
-  const project = new Project({ tsConfigFilePath: './tsconfig.json', addFilesFromTsConfig: true });
-    buildExplorer({ project, screen });
-  screen.render()
-}
-test()
