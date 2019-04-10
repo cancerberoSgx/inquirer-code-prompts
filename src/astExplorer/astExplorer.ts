@@ -141,71 +141,21 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
   }
 
   onUpKey() {
-    // if (!this.currentInput) {
-    //   this.navigableNativeNodes = [
-    //     ...getChildren(this.lastSelectedNode.parent&&this.lastSelectedNode.parent.parent ||this.lastSelectedNode.parent||this.lastSelectedNode)
-    //   ]
-    // }
-    // this.selectedNodeIndex =
-    //   this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
-    // this.onKeypress()
     this.navigation.onUpKey(this)
     this.onKeypress()
   }
 
   onDownKey() {
-    // if (!this.currentInput) {
-    //   this.navigableNativeNodes = [
-    //      ...getChildren(this.lastSelectedNode.parent).map(s=>getChildren(s)).flat()
-    //   ]
-    //   this.selectedNodeIndex = 0
-    // }
-    // this.selectedNodeIndex =
-    //   this.selectedNodeIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.selectedNodeIndex + 1
-    // this.onKeypress()
-
     this.navigation.onDownKey(this)
     this.onKeypress()
   }
-  // onLeftKey() {
-  //   if (!this.currentInput) {
-  //     const children = getChildren(this.lastSelectedNode.parent)
-  //     if(children[0] ===this.lastSelectedNode){
-  //       this.navigableNativeNodes = [
-  //           ...getChildren(this.lastSelectedNode && this.lastSelectedNode.parent && this.lastSelectedNode.parent .parent||this.lastSelectedNode.parent||this.lastSelectedNode )
-  //         ]
-  //         this.selectedNodeIndex--
-  //     }
-  //     else {
-  //       this.selectedNodeIndex++
-  //       // this.selectedNodeIndex =
-  //       // this.selectedNodeIndex <= 0 ? this.navigableNativeNodes.length - 1 : this.selectedNodeIndex - 1
-  //     }
-  //   }
-  //   this.onKeypress()
-  // }
-
-  // onRightKey() {
-  //   if (!this.currentInput) {
-  //     const children = getChildren(this.lastSelectedNode.parent)
-  //     if(children[children.length-1] ===this.lastSelectedNode){
-  //       this.navigableNativeNodes = [
-  //           ...getChildren(this.lastSelectedNode)
-  //         ]
-  //         this.selectedNodeIndex=0
-  //     }
-  //     else {
-  //       this.selectedNodeIndex++
-  //       // this.kindNameSuggestionIndex =
-  //       //   this.kindNameSuggestionIndex >= this.navigableNativeNodes.length - 1 ? 0 : this.kindNameSuggestionIndex + 1
-  //     }
-  //   }
-  //   this.onKeypress()
-  // }
-
 
   // LIFE CYCLE and misc utilities
 
+  getCurrentValue(): T {
+    this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex] || this.lastSelectedNode
+    return { selectedNodes: [this.lastSelectedNode] } as any // TODO: check
+  }
   private onEnd(state: { value: T }) {
     this.status = 'answered'
     this.answer = state.value
@@ -215,10 +165,6 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
   }
   private onError() {
     this.render('Please enter valid code or selector.')
-  }
-  getCurrentValue(): T {
-    this.lastSelectedNode = this.navigableNativeNodes[this.selectedNodeIndex] || this.lastSelectedNode
-    return { selectedNodes: [this.lastSelectedNode] } as any // TODO: check
   }
   private _run(cb: any) {
     this.done = cb

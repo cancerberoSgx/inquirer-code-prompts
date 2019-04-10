@@ -60,7 +60,10 @@ Example to come.
 less parametrize the paginator bottom text
 
 ### jsxExplorer
-  * should print a breadcrumb and basic info when navigating nodes with arrows.
+
+ * navigation with mouse ?
+
+ * should print a breadcrumb and basic info when navigating nodes with arrows.
  
  * should let me visit all childs with arrows withouth filter - should allow to ignore the selector. If user delete all text then it won't filter and let me nav with arrows (see next) 
 
