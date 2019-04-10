@@ -5,9 +5,18 @@ import Project, { TypeGuards, Node } from 'ts-morph';
 export function getGeneralNodeKindName(c: GeneralNode) {
   return isDirectory(c) ? 'Directory' : c.getKindName()
 }
+// export function getGeneralNodeName(c: GeneralNode) {
+//   try {
+//     return isDirectory(c) ? c.getBaseName() : isSourceFile(c) ? c.getBaseName()  : c ?getName(c) : ''
+//   } catch (error) {
+//     console.log(error);
+    
+//   return  ''
+//   }
+// }
 export function getGeneralNodeName(c: GeneralNode) {
   try {
-    return isDirectory(c) ? c.getBaseName() : isSourceFile(c) ? c.getBaseName()  : c ? ( getName(c) || c.getKindName()||'') : ''
+    return isDirectory(c) ? c.getBaseName() : isSourceFile(c) ? c.getBaseName()  : c ?getName(c) : ''
   } catch (error) {
     console.log(error);
     
