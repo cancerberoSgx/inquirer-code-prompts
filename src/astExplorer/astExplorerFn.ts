@@ -1,5 +1,5 @@
-import { prompt } from 'inquirer';
-import { Options, ResultValue } from './types';
+import { prompt } from 'inquirer'
+import { Options, ResultValue } from './types'
 /**
  * Ast explorer, user can see code, filter entering tsquery selectors and navigate thgouh matched nodes with arrow keys. finally select a node with enter. Usage:
 ```
@@ -39,6 +39,7 @@ export async function astExplorer(options: Options): Promise<ResultValue> {
       type: 'ast-explorer',
       name: ' ',
       choices,
+      //@ts-ignore
       paginated: true,
       pageSize: options.pageSize || Math.min(options.pageSize || Infinity, rows)
     }

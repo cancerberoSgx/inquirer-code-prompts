@@ -10,10 +10,13 @@
     "rootDir": ".",
     "declaration": true,
     "strict": true,
-    // "noImplicitAny": false
     "skipLibCheck": true
   },
   "include": [
-    "src", "spec"
+    "src",
+    "spec"
+  ],
+  "exclude": [
+    "spec/assets/experiments/"
   ]
 }

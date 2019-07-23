@@ -7,6 +7,7 @@ describe('astExplorerSpec', () => {
 
   beforeAll(async done => {
     client = new Driver()
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000
     helper = new Helper(client)
     await client.start({
       notSilent: true

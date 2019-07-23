@@ -6,6 +6,7 @@ describe('less', () => {
   let helper: Helper
 
   beforeAll(async done => {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000
     client = new Driver()
     helper = new Helper(client)
     await client.start({

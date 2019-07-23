@@ -29,6 +29,7 @@ export async function less(options: Options): Promise<any> {
       name: ' ',
       choices: s.split('\n'),
       prefix: options.prefix || '',
+      //@ts-ignore
       paginated: true,
       pageSize: options.pageSize || Math.min(options.pageSize || Infinity, rows)
     }
@@ -118,7 +119,7 @@ export class Less extends Base {
     this.rl.line = String(index + 1)
     this.onKeypress()
   }
-  protected renderText(choices: objects.ChoiceOption[], pointer: any) {
+  protected renderText(choices: objects.ChoiceOption<any>[], pointer: any) {
     let output = ''
     choices.forEach(function(choice, i) {
       output += '\n'

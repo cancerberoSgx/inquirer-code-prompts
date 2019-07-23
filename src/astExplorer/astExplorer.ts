@@ -1,15 +1,15 @@
-import { tsquery } from '@phenomnomnominal/tsquery';
-import chalk from 'chalk';
-import { appendFileSync } from 'fs';
-import { Questions } from 'inquirer';
-import { map, takeUntil } from 'rxjs/operators';
-import * as ts from 'typescript';
-import { getChildren, getKindName } from 'typescript-ast-util';
-import { AbstractPaginator } from '../base/basicPaginator';
-import { CustomBase, InquirerBase, KeyEvent } from '../base/types';
-import { nodeKinds } from './nodeKinds';
-import { ResultValue, NavigationOptions, Navigation } from './types';
-import { NavigationTreeLikeArrowNav } from './treeLikeArrowNavigation';
+import { tsquery } from '@phenomnomnominal/tsquery'
+import chalk from 'chalk'
+import { appendFileSync } from 'fs'
+import { Questions } from 'inquirer'
+import { map, takeUntil } from 'rxjs/operators'
+import * as ts from 'typescript'
+import { getChildren, getKindName } from 'typescript-ast-util'
+import { AbstractPaginator } from '../base/basicPaginator'
+import { CustomBase, InquirerBase, KeyEvent } from '../base/types'
+import { nodeKinds } from './nodeKinds'
+import { ResultValue, NavigationOptions, Navigation } from './types'
+import { NavigationTreeLikeArrowNav } from './treeLikeArrowNavigation'
 const Base = require('inquirer/lib/prompts/base') as typeof CustomBase
 const observe = require('inquirer/lib/utils/events')
 
@@ -47,7 +47,6 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     }
   }
 
-
   // RENDER
 
   render(error2?: string) {
@@ -64,22 +63,26 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
         : this.kindNameSuggestions
     message += this.paginator.paginate(output, this.selected || 0, this.opt.pageSize)
     message += `Selector: ${this.currentInput}`
-    let bottomContent = `${this.lastSelectedNode ?chalk.greenBright( `Selected "${getKindName(this.lastSelectedNode)}" at pos ${this.lastSelectedNode.pos}`) : ''}\nSyntaxKind Autocomplete (TAB): \n - [${
+    let bottomContent = `${
+      this.lastSelectedNode
+        ? chalk.greenBright(`Selected "${getKindName(this.lastSelectedNode)}" at pos ${this.lastSelectedNode.pos}`)
+        : ''
+    }\nSyntaxKind Autocomplete (TAB): \n - [${
       this.kindNameSuggestionIndex !== -1
         ? this.kindNameSuggestions
         : this.kindNameSuggestions
-          .map(k => {
-            const index = k.toLowerCase().indexOf(lowerInput)
-            const a = `${chalk.redBright(index === -1 ? '' : k.substring(0, lowerInput.length))}${k.substring(
-              index === -1 ? 0 : lowerInput.length,
-              k.length
-            )}`
-            return a
-          })
-          .map((s, i, a) => i > 5 ? undefined : s)
-          .filter(a => a)
-          .join(', ')
-      }]`.trim()
+            .map(k => {
+              const index = k.toLowerCase().indexOf(lowerInput)
+              const a = `${chalk.redBright(index === -1 ? '' : k.substring(0, lowerInput.length))}${k.substring(
+                index === -1 ? 0 : lowerInput.length,
+                k.length
+              )}`
+              return a
+            })
+            .map((s, i, a) => (i > 5 ? undefined : s))
+            .filter(a => a)
+            .join(', ')
+    }]`.trim()
     if (error || error2) {
       bottomContent = '\n' + chalk.red('>> ') + (error || error2)
     }
@@ -117,12 +120,10 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     if (e && e.key && e.key.name === 'left') {
       this.navigation.onLeftKey(this)
       this.onKeypress()
-    } 
-    else if (e && e.key && e.key.name === 'right') {
+    } else if (e && e.key && e.key.name === 'right') {
       this.navigation.onRightKey(this)
       this.onKeypress()
-    }
-    else if (e && e.key && e.key.name === 'tab') {
+    } else if (e && e.key && e.key.name === 'tab') {
       //On TAB we advance to next syntax kind suggestion if any. this.currentInput is reset to that value. or show error if no suggestion left
       this.kindNameSuggestionIndex++
       this.kindNameSuggestionIndex >= this.kindNameSuggestions.length ? 0 : this.kindNameSuggestionIndex
@@ -132,7 +133,8 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
         this.currentInput = this.kindNameSuggestions[this.kindNameSuggestionIndex]
         this.rl.line = this.currentInput
       }
-    } else if (e && e.value) {      // is a letter
+    } else if (e && e.value) {
+      // is a letter
       this.kindNameSuggestionIndex = -1
       this.currentInput = this.rl.line
     }
@@ -184,5 +186,3 @@ export class AstExplorer<T extends ResultValue> extends Base implements Inquirer
     appendFileSync('l.log', '\n*** LOG' + args.map(o => JSON.stringify(o)).join(', '))
   }
 }
-
-
